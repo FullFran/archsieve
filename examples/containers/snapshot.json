@@ -1,0 +1,596 @@
+{
+  "schemaVersion": "0.2",
+  "kind": "archsieve-snapshot",
+  "subject": {
+    "name": "containers",
+    "commit": "84bba8715e0555882fe0076fd286b20a152b3393",
+    "dirty": false
+  },
+  "tools": [
+    {
+      "name": "cargo",
+      "version": "cargo 1.100.0 (3acc79c0c 2026-11-05)"
+    },
+    {
+      "name": "dependency-cruiser",
+      "version": "18.7.2"
+    },
+    {
+      "name": "go",
+      "version": "go1.26.10"
+    }
+  ],
+  "analyses": [
+    {
+      "tool": "dependency-cruiser",
+      "scope": ".",
+      "status": "ok"
+    },
+    {
+      "tool": "go list",
+      "scope": "svc",
+      "status": "ok",
+      "note": "module example.com/svc"
+    },
+    {
+      "tool": "manifests",
+      "scope": ".",
+      "status": "ok",
+      "note": "6 units from 7 manifests"
+    },
+    {
+      "tool": "cargo metadata",
+      "scope": "desktop/src-tauri",
+      "status": "ok"
+    },
+    {
+      "tool": "declared model",
+      "scope": "architecture/model.likec4.json",
+      "status": "ok",
+      "note": "likec4: 8 elements, 4 links"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "api/server.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "container:.",
+      "kind": "container",
+      "path": ".",
+      "title": "shop",
+      "technology": [
+        "node"
+      ],
+      "runnable": true,
+      "evidence": [
+        {
+          "tool": "manifest",
+          "file": "package.json",
+          "detail": "scripts.start"
+        }
+      ],
+      "status": "undeclared"
+    },
+    {
+      "id": "container:api",
+      "kind": "container",
+      "path": "api",
+      "title": "API",
+      "technology": [],
+      "runnable": false,
+      "declared": {
+        "id": "shop.api",
+        "title": "API",
+        "technology": "Node",
+        "parent": "shop"
+      },
+      "status": "declared-unverified",
+      "evidence": [
+        {
+          "tool": "likec4",
+          "file": "architecture/model.likec4.json",
+          "detail": "shop.api"
+        }
+      ]
+    },
+    {
+      "id": "container:desktop",
+      "kind": "container",
+      "path": "desktop",
+      "title": "shop-desktop",
+      "technology": [
+        "node"
+      ],
+      "runnable": false,
+      "evidence": [
+        {
+          "tool": "likec4",
+          "file": "architecture/model.likec4.json",
+          "detail": "shop.desktop"
+        },
+        {
+          "tool": "manifest",
+          "file": "desktop/package.json"
+        }
+      ],
+      "declared": {
+        "id": "shop.desktop",
+        "title": "Desktop app",
+        "technology": "Tauri",
+        "parent": "shop"
+      },
+      "status": "confirmed"
+    },
+    {
+      "id": "container:desktop/src-tauri",
+      "kind": "container",
+      "path": "desktop/src-tauri",
+      "title": "shop-desktop",
+      "technology": [
+        "rust",
+        "tauri"
+      ],
+      "runnable": true,
+      "evidence": [
+        {
+          "tool": "cargo metadata",
+          "file": "desktop/src-tauri/Cargo.toml",
+          "detail": "bin shop-desktop"
+        },
+        {
+          "tool": "manifest",
+          "file": "desktop/src-tauri/tauri.conf.json"
+        }
+      ]
+    },
+    {
+      "id": "container:packages/cli",
+      "kind": "container",
+      "path": "packages/cli",
+      "title": "@shop/cli",
+      "technology": [
+        "node"
+      ],
+      "runnable": true,
+      "evidence": [
+        {
+          "tool": "likec4",
+          "file": "architecture/model.likec4.json",
+          "detail": "shop.cli"
+        },
+        {
+          "tool": "manifest",
+          "file": "packages/cli/package.json",
+          "detail": "bin"
+        }
+      ],
+      "declared": {
+        "id": "shop.cli",
+        "title": "CLI",
+        "technology": "Node",
+        "parent": "shop"
+      },
+      "status": "confirmed"
+    },
+    {
+      "id": "container:packages/shared",
+      "kind": "container",
+      "path": "packages/shared",
+      "title": "@shop/shared",
+      "technology": [
+        "node"
+      ],
+      "runnable": false,
+      "evidence": [
+        {
+          "tool": "likec4",
+          "file": "architecture/model.likec4.json",
+          "detail": "shop.shared"
+        },
+        {
+          "tool": "manifest",
+          "file": "packages/shared/package.json"
+        }
+      ],
+      "declared": {
+        "id": "shop.shared",
+        "title": "Shared library",
+        "technology": "Node",
+        "parent": "shop"
+      },
+      "status": "confirmed"
+    },
+    {
+      "id": "container:svc",
+      "kind": "container",
+      "path": "svc",
+      "title": "example.com/svc",
+      "technology": [
+        "go"
+      ],
+      "runnable": true,
+      "evidence": [
+        {
+          "tool": "go list",
+          "file": "svc",
+          "detail": "package main"
+        },
+        {
+          "tool": "likec4",
+          "file": "architecture/model.likec4.json",
+          "detail": "shop.svc"
+        },
+        {
+          "tool": "manifest",
+          "file": "svc/go.mod"
+        }
+      ],
+      "declared": {
+        "id": "shop.svc",
+        "title": "Store service",
+        "technology": "Go",
+        "parent": "shop"
+      },
+      "status": "confirmed"
+    },
+    {
+      "id": "container:workers/mailer",
+      "kind": "container",
+      "path": "workers/mailer",
+      "title": "Mailer",
+      "technology": [],
+      "runnable": false,
+      "declared": {
+        "id": "shop.mailer",
+        "title": "Mailer",
+        "technology": "Node",
+        "parent": "shop"
+      },
+      "status": "declared-unverified",
+      "evidence": [
+        {
+          "tool": "likec4",
+          "file": "architecture/model.likec4.json",
+          "detail": "shop.mailer"
+        }
+      ]
+    },
+    {
+      "id": "desktop/src/main.js",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "go:example.com/svc",
+      "kind": "go-package",
+      "file": "svc",
+      "evidence": [
+        {
+          "tool": "go list",
+          "file": "svc"
+        }
+      ]
+    },
+    {
+      "id": "go:example.com/svc/store",
+      "kind": "go-package",
+      "file": "svc/store",
+      "evidence": [
+        {
+          "tool": "go list",
+          "file": "svc/store"
+        }
+      ]
+    },
+    {
+      "id": "packages/cli/cli.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "packages/shared/index.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "system:payments",
+      "kind": "system",
+      "title": "Payments provider",
+      "declared": {
+        "id": "payments",
+        "title": "Payments provider"
+      },
+      "evidence": [
+        {
+          "tool": "likec4",
+          "file": "architecture/model.likec4.json",
+          "detail": "payments"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "source": "api/server.mjs",
+      "target": "packages/shared/index.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "api/server.mjs",
+          "detail": "../packages/shared/index.mjs"
+        }
+      ]
+    },
+    {
+      "source": "container:api",
+      "target": "container:packages/shared",
+      "kind": "depends-on",
+      "relations": {
+        "imports": 1
+      },
+      "evidence": [
+        {
+          "tool": "archsieve",
+          "file": "api/server.mjs",
+          "detail": "imports packages/shared/index.mjs"
+        }
+      ],
+      "status": "undeclared"
+    },
+    {
+      "source": "container:api",
+      "target": "container:svc",
+      "kind": "depends-on",
+      "declared": [
+        {
+          "title": "spawns",
+          "technology": "child process"
+        }
+      ],
+      "status": "declared-unverified",
+      "evidence": [
+        {
+          "tool": "likec4",
+          "file": "architecture/model.likec4.json",
+          "detail": "shop.api -> shop.svc"
+        }
+      ]
+    },
+    {
+      "source": "container:api",
+      "target": "system:payments",
+      "kind": "depends-on",
+      "declared": [
+        {
+          "title": "charges",
+          "technology": "HTTPS"
+        }
+      ],
+      "status": "declared-unverified",
+      "evidence": [
+        {
+          "tool": "likec4",
+          "file": "architecture/model.likec4.json",
+          "detail": "shop.api -> payments"
+        }
+      ]
+    },
+    {
+      "source": "container:desktop",
+      "target": "container:api",
+      "kind": "depends-on",
+      "declared": [
+        {
+          "title": "calls",
+          "technology": "HTTP"
+        }
+      ],
+      "status": "declared-unverified",
+      "evidence": [
+        {
+          "tool": "likec4",
+          "file": "architecture/model.likec4.json",
+          "detail": "shop.desktop -> shop.api"
+        }
+      ]
+    },
+    {
+      "source": "container:packages/cli",
+      "target": "container:packages/shared",
+      "kind": "depends-on",
+      "relations": {
+        "imports": 1,
+        "package-dependency": 1
+      },
+      "evidence": [
+        {
+          "tool": "archsieve",
+          "file": "packages/cli/cli.mjs",
+          "detail": "imports packages/shared/index.mjs"
+        },
+        {
+          "tool": "likec4",
+          "file": "architecture/model.likec4.json",
+          "detail": "shop.cli -> shop.shared"
+        },
+        {
+          "tool": "manifest",
+          "file": "packages/cli/package.json",
+          "detail": "dependencies.@shop/shared"
+        }
+      ],
+      "declared": [
+        {
+          "title": "uses"
+        }
+      ],
+      "status": "confirmed"
+    },
+    {
+      "source": "go:example.com/svc",
+      "target": "go:example.com/svc/store",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "go list",
+          "file": "svc"
+        }
+      ]
+    },
+    {
+      "source": "packages/cli/cli.mjs",
+      "target": "packages/shared/index.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "packages/cli/cli.mjs",
+          "detail": "../shared/index.mjs"
+        }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "declared-path-missing:container:workers/mailer",
+      "level": "signal",
+      "rule": "declared-path-missing",
+      "subjects": [
+        "container:workers/mailer"
+      ],
+      "message": "Declared element shop.mailer points to 'workers/mailer', which does not exist in the repository.",
+      "evidence": [
+        {
+          "tool": "likec4",
+          "file": "architecture/model.likec4.json",
+          "detail": "shop.mailer"
+        }
+      ]
+    },
+    {
+      "id": "declared-unverified-link:container:api|container:svc",
+      "level": "unknown",
+      "rule": "declared-unverified-link",
+      "subjects": [
+        "container:api",
+        "container:svc"
+      ],
+      "message": "Declared link container:api -> container:svc has no static evidence in the code. Runtime links (HTTP, IPC, child processes) are not visible to static analysis.",
+      "evidence": [
+        {
+          "tool": "likec4",
+          "file": "architecture/model.likec4.json",
+          "detail": "shop.api -> shop.svc"
+        }
+      ]
+    },
+    {
+      "id": "declared-unverified-link:container:api|system:payments",
+      "level": "unknown",
+      "rule": "declared-unverified-link",
+      "subjects": [
+        "container:api",
+        "system:payments"
+      ],
+      "message": "Declared link container:api -> system:payments has no static evidence in the code. Runtime links (HTTP, IPC, child processes) are not visible to static analysis.",
+      "evidence": [
+        {
+          "tool": "likec4",
+          "file": "architecture/model.likec4.json",
+          "detail": "shop.api -> payments"
+        }
+      ]
+    },
+    {
+      "id": "declared-unverified-link:container:desktop|container:api",
+      "level": "unknown",
+      "rule": "declared-unverified-link",
+      "subjects": [
+        "container:desktop",
+        "container:api"
+      ],
+      "message": "Declared link container:desktop -> container:api has no static evidence in the code. Runtime links (HTTP, IPC, child processes) are not visible to static analysis.",
+      "evidence": [
+        {
+          "tool": "likec4",
+          "file": "architecture/model.likec4.json",
+          "detail": "shop.desktop -> shop.api"
+        }
+      ]
+    },
+    {
+      "id": "no-orphans:desktop/src/main.js",
+      "level": "signal",
+      "rule": "no-orphans",
+      "subjects": [
+        "desktop/src/main.js"
+      ],
+      "message": "desktop/src/main.js has no static importers or imports (entry point, script or dead file?).",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "desktop/src/main.js"
+        }
+      ]
+    },
+    {
+      "id": "undeclared-container:container:.",
+      "level": "signal",
+      "rule": "undeclared-container",
+      "subjects": [
+        "container:."
+      ],
+      "message": "Unit . is observed in the code, but no declared element has path '.'.",
+      "evidence": [
+        {
+          "tool": "manifest",
+          "file": "package.json",
+          "detail": "scripts.start"
+        }
+      ]
+    },
+    {
+      "id": "undeclared-link:container:api|container:packages/shared",
+      "level": "signal",
+      "rule": "undeclared-link",
+      "subjects": [
+        "container:api",
+        "container:packages/shared"
+      ],
+      "message": "The code links container:api -> container:packages/shared, but the declared model has no such relation.",
+      "evidence": [
+        {
+          "tool": "archsieve",
+          "file": "api/server.mjs",
+          "detail": "imports packages/shared/index.mjs"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Static import graph only: no runtime calls, network/IPC/queue/event links, reflection or computed dynamic imports. Unresolvable imports are listed as unknown findings, not guessed.",
+    "Go package import graph only; standard library omitted; external packages collapsed to host/org/repo. Built with the current GOOS/GOARCH and no build tags, so tagged files may be missing. Rust/Tauri code is not analyzed in V0.",
+    "Units come from manifests read as data (package.json, Cargo targets via cargo metadata, go.mod and Go main packages, tauri.conf.json). Links between units at runtime (HTTP, IPC, child processes) are not visible statically.",
+    "The declared model is read as exported, never run. A declared-unverified link is not wrong, only unproven: runtime links (HTTP, IPC, child processes) have no static evidence."
+  ]
+}

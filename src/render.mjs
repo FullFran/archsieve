@@ -14,7 +14,7 @@ function componentOf(node, depth, within) {
 }
 
 // Where an element lives on disk (a file path, or a folder for packages); null when the snapshot does not say.
-const whereOf = (n) => (n.kind === 'file' ? n.id : n.file ?? (n.kind === 'go-package' ? n.id.replace(/^go:/, '') : null));
+const whereOf = (n) => (n.kind === 'container' ? n.path : n.kind === 'file' ? n.id : n.file ?? (n.kind === 'go-package' ? n.id.replace(/^go:/, '') : null));
 
 // An element outside the --within scope becomes one boundary box per top-level folder (or external package).
 function boundaryOf(n) {
@@ -25,12 +25,26 @@ function boundaryOf(n) {
   return top ? { id: `out:${top}`, label: `${top}/ (outside)`, kind: 'boundary' } : { id: 'out:(root)', label: '(root files, outside)', kind: 'boundary' };
 }
 
+// A container box says what it is, where it lives, its technology and, with a declared model, its
+// cross-check state in words (never colour alone).
+const STATE_TEXT = { 'declared-unverified': 'declared, unverified', undeclared: 'in code, not in model' };
+const LINK_STATE_TEXT = { 'declared-unverified': 'unverified', undeclared: 'not in model' };
+function containerNode(n) {
+  const group = n.declared?.parent ? `group:${n.declared.parent}` : null;
+  if (n.kind === 'system') return { id: n.id, label: `${n.title}<br/>external system`, kind: 'system', group };
+  const tech = n.declared?.technology ?? n.technology.join('+');
+  const lines = [n.declared?.title ?? n.title, `${n.path}${tech ? ` · ${tech}` : ''}`, ...(STATE_TEXT[n.status] ? [STATE_TEXT[n.status]] : [])];
+  return { id: n.id, label: lines.join('<br/>'), kind: 'container', group, ...(n.status ? { state: n.status } : {}) };
+}
+
 export function project(snapshot, { view = 'components', depth = 2, externals = false, within = null } = {}) {
   const nodes = new Map(), edges = new Map();
   const nodeById = new Map(snapshot.nodes.map((n) => [n.id, n]));
   let mapNode;
   if (view === 'nest') {
     mapNode = (n) => (n.kind.startsWith('nest-') ? { id: n.id, label: n.id.split(/[:/]/).pop(), group: n.kind === 'nest-module' ? null : n.module, kind: n.kind } : null);
+  } else if (view === 'containers') {
+    mapNode = (n) => (n.kind === 'container' || n.kind === 'system' ? containerNode(n) : null);
   } else if (view === 'files') {
     mapNode = (n) => (CODE_KINDS.has(n.kind) ? { id: n.id, label: n.id.replace(/^go:/, ''), kind: n.kind } : externals && n.kind === 'external-package' ? { id: n.id, label: n.id, kind: n.kind } : null);
   } else {
@@ -50,11 +64,15 @@ export function project(snapshot, { view = 'components', depth = 2, externals = 
   }
   for (const n of snapshot.nodes) { const m = mapNode(n); if (m && !nodes.has(m.id)) nodes.set(m.id, m); }
   for (const e of snapshot.edges) {
-    if (view === 'nest' ? !e.kind.startsWith('nest-') : e.kind !== 'imports') continue;
+    if (view === 'nest' ? !e.kind.startsWith('nest-') : e.kind !== (view === 'containers' ? 'depends-on' : 'imports')) continue;
     const s = nodeById.get(e.source) && mapNode(nodeById.get(e.source));
     const t = nodeById.get(e.target) && mapNode(nodeById.get(e.target));
     if (!s || !t || s.id === t.id || (s.kind === 'boundary' && t.kind === 'boundary')) continue;
     const k = `${s.id}\u0000${t.id}\u0000${e.kind}`;
+    if (e.kind === 'depends-on') {
+      edges.set(k, { source: s.id, target: t.id, kind: e.kind, relations: e.relations ?? {}, ...(e.declared ? { declared: e.declared } : {}), ...(e.status ? { state: e.status } : {}) });
+      continue;
+    }
     const prev = edges.get(k);
     const relation = e.kind !== 'imports' ? e.kind : e.typeOnly ? 'type-only' : e.dynamic ? 'lazy' : 'imports';
     const relations = { ...prev?.relations, [relation]: (prev?.relations?.[relation] ?? 0) + 1 };
@@ -84,10 +102,15 @@ export function compareProjections(before, after) {
 
 // What an arrow means, in words: "imports" (static, needed at runtime), "lazy" (dynamic import()),
 // "type-only" (erased at compile time), or the Nest relation. Aggregated arrows count each relation.
-const RELATION_ORDER = ['imports', 'lazy', 'type-only'];
+const RELATION_ORDER = ['imports', 'lazy', 'type-only', 'package-dependency'];
 const NEST_RELATION = { 'nest-imports': 'imports', 'nest-injects': 'injects' };
 function edgeLabel(e) {
   if (NEST_RELATION[e.kind]) return `${NEST_RELATION[e.kind]}${e.count > 1 ? ` x${e.count}` : ''}`;
+  if (e.kind === 'depends-on') {
+    const declared = (e.declared ?? []).map((d) => [d.title, d.technology ? `(${d.technology})` : ''].filter(Boolean).join(' ')).join(', ');
+    const observed = RELATION_ORDER.filter((r) => e.relations[r]).map((r) => `${r}${e.relations[r] > 1 ? ` x${e.relations[r]}` : ''}`).join(', ');
+    return [declared, observed, LINK_STATE_TEXT[e.state]].filter(Boolean).join(' · ');
+  }
   const rel = e.relations ?? { imports: e.count ?? 1 };
   return RELATION_ORDER.filter((r) => rel[r]).map((r) => `${r}${rel[r] > 1 ? ` x${rel[r]}` : ''}`).join(', ');
 }
@@ -98,7 +121,7 @@ const q = (s) => String(s).replace(/"/g, '#quot;');
 
 // Explicit fills, strokes and text colour: GitHub renders Mermaid with the reader's theme, and the default dark
 // theme draws dark-grey edges on a near-black page. These pairs read on both themes.
-const KIND_CLASS = (kind) => (kind === 'external-package' ? 'external' : kind === 'nest-module' ? 'module' : 'code');
+const KIND_CLASS = (kind) => (kind === 'external-package' || kind === 'system' ? 'external' : kind === 'container' ? 'container' : kind === 'nest-module' ? 'module' : 'code');
 const CLASS_DEFS = [
   '  classDef code fill:#ddf4ff,stroke:#0969da,color:#1f2328',
   '  classDef external fill:#fff8c5,stroke:#9a6700,color:#1f2328',
@@ -106,9 +129,13 @@ const CLASS_DEFS = [
   '  classDef added fill:#dafbe1,stroke:#2da44e,stroke-width:2px,color:#1f2328',
   '  classDef removed fill:#ffebe9,stroke:#cf222e,stroke-dasharray:4 3,color:#1f2328',
   '  classDef boundary fill:#f6f8fa,stroke:#57606a,stroke-dasharray:6 4,color:#1f2328',
+  '  classDef container fill:#ddf4ff,stroke:#0969da,stroke-width:2px,color:#1f2328',
+  '  classDef unverified fill:#ffffff,stroke:#0969da,stroke-width:2px,stroke-dasharray:5 3,color:#1f2328',
+  '  classDef undeclared fill:#fff1e5,stroke:#bc4c00,stroke-width:2px,color:#1f2328',
   '  classDef focus fill:#ddf4ff,stroke:#0969da,stroke-width:4px,color:#1f2328',
 ];
-const nodeClass = (n) => (n.status === 'added' || n.status === 'removed' ? n.status : n.focus ? 'focus' : n.kind === 'boundary' ? 'boundary' : KIND_CLASS(n.kind));
+const STATE_CLASS = { 'declared-unverified': 'unverified', undeclared: 'undeclared' };
+const nodeClass = (n) => (n.status === 'added' || n.status === 'removed' ? n.status : n.focus ? 'focus' : n.kind === 'boundary' ? 'boundary' : STATE_CLASS[n.state] ?? KIND_CLASS(n.kind));
 
 export function toMermaid(p, { title } = {}) {
   const ids = new Map(p.nodes.map((n, i) => [n.id, `n${i}`]));
@@ -117,25 +144,28 @@ export function toMermaid(p, { title } = {}) {
   const groups = new Map();
   for (const n of p.nodes) { const g = n.group ?? ''; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(n); }
   const emit = (n, indent) => {
-    const shape = n.kind === 'nest-module' ? `[["${q(n.label)}"]]` : n.kind === 'external-package' ? `(["${q(n.label)}"])` : `["${q(n.label)}"]`;
+    const shape = n.kind === 'nest-module' ? `[["${q(n.label)}"]]` : n.kind === 'external-package' || n.kind === 'system' ? `(["${q(n.label)}"])` : `["${q(n.label)}"]`;
     L.push(`${indent}${ids.get(n.id)}${shape}:::${nodeClass(n)}`);
   };
   // A node that owns members (a Nest module) is drawn AS the subgraph, so edges can target it directly.
   const nodeById = new Map(p.nodes.map((n) => [n.id, n]));
+  let gi = 0;
   for (const n of groups.get('') ?? []) if (!groups.has(n.id)) emit(n, '  ');
   for (const [g, ns] of [...groups.entries()].sort(byKey(([g]) => g))) {
     if (!g) continue;
     const owner = nodeById.get(g);
-    L.push(`  subgraph ${ids.get(g) ?? `g_${ids.size}`}["${q(owner?.label ?? g.split(':').pop())}"]`);
+    const gid = ids.get(g) ?? `g${gi++}`;
+    L.push(`  subgraph ${gid}["${q(owner?.label ?? g.split(':').pop())}"]`);
     ns.forEach((n) => emit(n, '    '));
     L.push('  end');
+    if (!owner) L.push(`  style ${gid} fill:#f6f8fa,stroke:#57606a,color:#1f2328`);
     // Subgraphs ignore `class` in Mermaid: copy the class body into a `style` line.
     if (owner) L.push(`  style ${ids.get(g)} ${CLASS_DEFS.find((d) => d.startsWith(`  classDef ${nodeClass(owner)} `)).split(' ').pop()}`);
   }
   const linkStyles = p.edges.length ? ['  linkStyle default stroke:#8c959f,stroke-width:1.5px'] : [];
   p.edges.forEach((e, i) => {
     const label = edgeLabel(e);
-    const arrow = e.kind === 'nest-imports' || e.status === 'removed' || typeOnlyEdge(e) ? '-.->' : '-->';
+    const arrow = e.kind === 'nest-imports' || e.status === 'removed' || e.state === 'declared-unverified' || typeOnlyEdge(e) ? '-.->' : '-->';
     L.push(`  ${ids.get(e.source)} ${arrow}${label ? `|"${q(label)}"|` : ''} ${ids.get(e.target)}`);
     if (e.status === 'added') linkStyles.push(`  linkStyle ${i} stroke:#2da44e,stroke-width:3px`);
     if (e.status === 'removed') linkStyles.push(`  linkStyle ${i} stroke:#cf222e,stroke-width:2px`);
@@ -161,11 +191,11 @@ export function toDot(p, { title } = {}) {
   for (const [g, ns] of [...groups.entries()].sort(byKey(([g]) => g))) {
     const ind = g ? '    ' : '  ';
     if (g) L.push(`  subgraph cluster_${gi++} {`, `    label=${dq(g.split(':').pop())};`);
-    for (const n of ns) L.push(`${ind}${dq(n.id)} [label=${dq(n.label)}${n.kind === 'external-package' ? ', shape=ellipse' : n.kind === 'nest-module' ? ', shape=component' : ''}${n.kind === 'boundary' ? ', style=dashed, color="#57606a"' : n.focus ? ', penwidth=4' : ''}${color(n.status)}];`);
+    for (const n of ns) L.push(`${ind}${dq(n.id)} [label=${dq(n.label).replaceAll('<br/>', '\\n')}${n.kind === 'external-package' || n.kind === 'system' ? ', shape=ellipse' : n.kind === 'nest-module' ? ', shape=component' : ''}${n.kind === 'boundary' || n.state === 'declared-unverified' ? ', style=dashed, color="#57606a"' : n.focus ? ', penwidth=4' : ''}${color(n.status)}];`);
     if (g) L.push('  }');
   }
   for (const e of p.edges) {
-    const style = e.kind === 'nest-imports' ? 'style=dotted, ' : typeOnlyEdge(e) ? 'style=dashed, ' : '';
+    const style = e.kind === 'nest-imports' ? 'style=dotted, ' : typeOnlyEdge(e) || e.state === 'declared-unverified' ? 'style=dashed, ' : '';
     L.push(`  ${dq(e.source)} -> ${dq(e.target)} [${style}label=${dq(edgeLabel(e))}${color(e.status)}];`);
   }
   L.push('}');
@@ -175,10 +205,11 @@ export function toDot(p, { title } = {}) {
 // ---- Diagram assembly: scope, budget, focus, titles, markdown ----
 
 const usage = (message) => Object.assign(new Error(message), { code: 'USAGE' });
-const VIEW_NAME = { components: 'Components', files: 'Files', nest: 'Nest DI' };
+const VIEW_NAME = { components: 'Components', files: 'Files', nest: 'Nest DI', containers: 'Containers' };
 const CONCERN = {
   components: 'Which folders depend on which, and how?',
   files: 'Which files import which?',
+  containers: 'Which units run or ship, and how do they depend on each other?',
   nest: 'Which Nest modules import each other, and which classes are injected where?',
 };
 
@@ -235,7 +266,7 @@ export function buildDiagram(snapshot, { view = 'components', depth = 2, externa
   const subject = `${snapshot.subject.name}${snapshot.subject.commit ? `@${snapshot.subject.commit.slice(0, 10)}` : ''}`;
   const quals = [...(view === 'components' ? [`depth ${d}`] : []), ...(within ? [`within ${within}`] : []), ...(before ? ['compared'] : [])];
   const base = `${VIEW_NAME[view]} of ${subject}${quals.length ? ` (${quals.join(', ')})` : ''}`;
-  const unit = view === 'components' ? 'folders' : view === 'files' ? (externals ? 'files and packages' : 'files') : 'Nest nodes';
+  const unit = view === 'components' ? 'folders' : view === 'files' ? (externals ? 'files and packages' : 'files') : view === 'containers' ? 'containers and systems' : 'Nest nodes';
   const shown = p.nodes.filter((n) => n.kind !== 'boundary').length, boundaries = p.nodes.length - shown;
   const scope = [`Snapshot ${subject}`, `showing ${shown} of ${fullAt.nodes.filter((n) => n.kind !== 'boundary').length} ${unit}`];
   if (within) scope.push(`within ${within}${boundaries ? ` (outside neighbours collapsed into ${boundaries} boundary ${boundaries === 1 ? 'box' : 'boxes'})` : ''}`);
@@ -249,7 +280,24 @@ export function buildDiagram(snapshot, { view = 'components', depth = 2, externa
 }
 
 // One row per style actually present in the projection: [mark, meaning].
+function containerLegend(p) {
+  const rows = [], has = (f) => p.nodes.some(f), edge = (f) => p.edges.some(f);
+  if (has((n) => n.kind === 'container' && !n.state)) rows.push(['Blue box', 'Container: a unit that runs or ships, with its path and technology']);
+  if (has((n) => n.state === 'declared-unverified')) rows.push(['Dashed blue box', 'Declared in the model, no manifest proves it (`declared, unverified`)']);
+  if (has((n) => n.state === 'undeclared')) rows.push(['Orange box', 'Found in the code, not declared in the model (`in code, not in model`)']);
+  if (has((n) => n.kind === 'system')) rows.push(['Yellow rounded box', 'System outside the repository, declared in the model']);
+  if (has((n) => n.group)) rows.push(['Labelled frame', 'The system the model declares these containers in']);
+  if (edge((e) => e.declared)) rows.push(['Words before the first `·`', 'Relation declared in the model, with its technology in brackets']);
+  const rel = new Set(p.edges.flatMap((e) => Object.keys(e.relations ?? {})));
+  if (rel.has('imports') || rel.has('lazy') || rel.has('type-only')) rows.push(['`imports`, `lazy`, `type-only`', 'Code imports that cross from one container into the other, counted']);
+  if (rel.has('package-dependency')) rows.push(['`package-dependency`', 'A package.json dependency on the other container']);
+  if (edge((e) => e.state === 'declared-unverified')) rows.push(['Dashed arrow ending in `unverified`', 'Declared in the model, no static evidence in the code (runtime links such as HTTP or IPC are never visible statically)']);
+  if (edge((e) => e.state === 'undeclared')) rows.push(['Arrow ending in `not in model`', 'Found in the code, not declared in the model']);
+  return rows;
+}
+
 function legendRows(p, view) {
+  if (view === 'containers') return containerLegend(p);
   const rel = new Set();
   let counted = false;
   for (const e of p.edges) {

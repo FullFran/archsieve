@@ -12,7 +12,7 @@ Usage:
   archsieve scan <dir> [--ref <git-ref>] [-o snapshot.json] [--paths a,b] [--exclude <regex, added to defaults>] [--ts-config <file>]
                        [--no-js] [--no-units] [--model <likec4.json>] [--go auto|none|<dir,...>] [--nest-entry <compiled module.js> [--nest-export AppModule]]
   archsieve diff <before.json> <after.json> [--format json|md] [--depth N] [-o file] [--fail-on error|signal|none]
-  archsieve render <snapshot.json> [--view components|files|nest] [--depth N] [--format mermaid|dot|md]
+  archsieve render <snapshot.json> [--view components|files|nest|containers] [--depth N] [--format mermaid|dot|md]
                        [--compare <before.json>] [--externals] [--within <dir>] [--focus <id>]
                        [--max-nodes N (default 40)] [--max-edges N (default 100)] [-o file]
   archsieve validate <snapshot-or-diff.json>
@@ -73,7 +73,7 @@ function main(argv) {
     }
     case 'render': {
       if (args.length !== 1) usageError('render needs <snapshot.json>');
-      const view = oneOf(o.view ?? 'components', ['components', 'files', 'nest'], 'view');
+      const view = oneOf(o.view ?? 'components', ['components', 'files', 'nest', 'containers'], 'view');
       const format = oneOf(o.format ?? 'mermaid', ['mermaid', 'dot', 'md'], 'format');
       const depth = Number(o.depth ?? 2);
       if (!Number.isInteger(depth) || depth < 1) usageError('--depth must be a positive integer');

@@ -81,3 +81,38 @@ test('scan --model: a file that is not a LikeC4 JSON export exits 2 with a clear
   assert.match(r.stderr, /\[BAD_INPUT\].*LikeC4/);
   assert.equal(cli(['scan', fixture('containers'), '--model', join(scratch(t), 'missing.json')]).code, 2);
 });
+
+function renderContainers(t, extra = [], scanExtra = ['--model', MODEL]) {
+  const out = join(scratch(t), 'snap.json');
+  assert.equal(cli(['scan', fixture('containers'), '-o', out, ...scanExtra]).code, 0);
+  const r = cli(['render', out, '--view', 'containers', ...extra]);
+  assert.equal(r.code, 0, r.stderr);
+  return r.stdout;
+}
+const idOf = (mmd, label) => new RegExp(`^ +(n\\d+)\\["${label}`, 'm').exec(mmd)?.[1];
+
+test('render --view containers: units grouped by declared system, each labelled with path, technology and state', (t) => {
+  const mmd = renderContainers(t);
+  assert.match(mmd, /^title: "Containers of containers@/m);
+  assert.match(mmd, /^ {2}subgraph g\d+\["shop"\]$/m, 'declared parent becomes a boundary');
+  assert.match(mmd, /^ {2}style g\d+ fill:#f6f8fa,stroke:#57606a,color:#1f2328$/m, 'the frame carries its own colours for dark themes');
+  assert.match(mmd, /\["API<br\/>api · Node<br\/>declared, unverified"\]:::unverified/);
+  assert.match(mmd, /\["shop<br\/>\. · node<br\/>in code, not in model"\]:::undeclared/);
+  assert.match(mmd, /\["CLI<br\/>packages\/cli · Node"\]:::container/);
+  assert.match(mmd, /\(\["Payments provider<br\/>external system"\]\):::external/);
+  const desktop = idOf(mmd, 'Desktop app'), api = idOf(mmd, 'API'), cliN = idOf(mmd, 'CLI'), shared = idOf(mmd, 'Shared library');
+  assert.match(mmd, new RegExp(`^ {2}${desktop} -\\.->\\|"calls \\(HTTP\\) · unverified"\\| ${api}$`, 'm'), 'declared-only link: dashed, marked in text');
+  assert.match(mmd, new RegExp(`^ {2}${cliN} -->\\|"uses · imports, package-dependency"\\| ${shared}$`, 'm'), 'confirmed link: solid, declared and observed relations');
+  assert.match(mmd, new RegExp(`^ {2}${api} -->\\|"imports · not in model"\\| ${shared}$`, 'm'));
+});
+
+test('render --view containers --format md: legend explains each state, and the view works without a model', (t) => {
+  const md = renderContainers(t, ['--format', 'md']);
+  assert.match(md, /^Which units run or ship, and how do they depend on each other\?$/m);
+  assert.match(md, /showing 9 of 9 containers and systems/);
+  for (const row of [/\| Dashed blue box \| Declared in the model, no manifest proves it/, /\| Orange box \| Found in the code, not declared in the model/,
+    /\| Dashed arrow ending in `unverified` \|/, /\| Arrow ending in `not in model` \|/]) assert.match(md, row);
+  const plain = renderContainers(t, [], []);
+  assert.doesNotMatch(plain, /not in model|· unverified|declared, unverified|:::unverified|:::undeclared|subgraph/, 'no model, no cross-check marks');
+  assert.match(plain, /\["@shop\/cli<br\/>packages\/cli · node"\]:::container/);
+});
