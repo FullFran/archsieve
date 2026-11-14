@@ -1,0 +1,7 @@
+{
+  "name": "shop",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*"],
+  "scripts": { "start": "node api/server.mjs" }
+}

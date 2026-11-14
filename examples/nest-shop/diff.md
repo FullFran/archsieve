@@ -1,9 +1,10 @@
-# ArchSieve diff: before@231bbf08d9 -> after@231bbf08d9
+# ArchSieve diff: before@e024759969 -> after@e024759969
 
 ## Structure (observed counts)
 
 | kind | before | after | delta |
 |---|---:|---:|---:|
+| container | 1 | 1 | 0 |
 | external-package | 1 | 1 | 0 |
 | file | 6 | 8 | +2 |
 | nest-controller | 1 | 1 | 0 |

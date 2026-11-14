@@ -1,9 +1,9 @@
 {
-  "schemaVersion": "0.1",
+  "schemaVersion": "0.2",
   "kind": "archsieve-snapshot",
   "subject": {
     "name": "after",
-    "commit": "231bbf08d9104ca72d7c3790d48e20e6677873d9",
+    "commit": "e024759969968aa7ffdabb52daec183c1ba544b0",
     "dirty": false
   },
   "tools": [
@@ -23,6 +23,12 @@
       "status": "ok"
     },
     {
+      "tool": "manifests",
+      "scope": ".",
+      "status": "ok",
+      "note": "1 units from 1 manifests"
+    },
+    {
       "tool": "@nestjs/core SerializedGraph",
       "scope": "dist/app.module.js",
       "status": "ok",
@@ -30,6 +36,22 @@
     }
   ],
   "nodes": [
+    {
+      "id": "container:.",
+      "kind": "container",
+      "path": ".",
+      "title": ".",
+      "technology": [
+        "node"
+      ],
+      "runnable": false,
+      "evidence": [
+        {
+          "tool": "manifest",
+          "file": "package.json"
+        }
+      ]
+    },
     {
       "id": "nest:controller:UsersModule/UsersController",
       "kind": "nest-controller",
@@ -670,6 +692,7 @@
   ],
   "limitations": [
     "Static import graph only: no runtime calls, network/IPC/queue/event links, reflection or computed dynamic imports. Unresolvable imports are listed as unknown findings, not guessed.",
+    "Units come from manifests read as data (package.json, Cargo targets via cargo metadata, go.mod and Go main packages, tauri.conf.json). Links between units at runtime (HTTP, IPC, child processes) are not visible statically.",
     "NestJS DI graph as registered by Nest in preview mode: providers are not instantiated, so factory/value providers and anything resolved via ModuleRef/request scope at runtime is not visible."
   ]
 }

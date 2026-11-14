@@ -6,12 +6,14 @@ import { run, byKey, edgeKey } from './util.mjs';
 import { scanDepcruise, DEFAULT_EXCLUDE, VENDOR, VERSION as DC_VERSION } from './adapters/depcruise.mjs';
 import { scanGo, goVersion } from './adapters/golist.mjs';
 import { scanNest } from './adapters/nest.mjs';
+import { scanUnits, MANIFESTS } from './adapters/units.mjs';
 
-export const SCHEMA_VERSION = '0.1';
+export const SCHEMA_VERSION = '0.2';
 
 const LIMITATIONS = {
   'dependency-cruiser': 'Static import graph only: no runtime calls, network/IPC/queue/event links, reflection or computed dynamic imports. Unresolvable imports are listed as unknown findings, not guessed.',
   'go list': 'Go package import graph only; standard library omitted; external packages collapsed to host/org/repo. Built with the current GOOS/GOARCH and no build tags, so tagged files may be missing. Rust/Tauri code is not analyzed in V0.',
+  manifests: 'Units come from manifests read as data (package.json, Cargo targets via cargo metadata, go.mod and Go main packages, tauri.conf.json). Links between units at runtime (HTTP, IPC, child processes) are not visible statically.',
   'nest': 'NestJS DI graph as registered by Nest in preview mode: providers are not instantiated, so factory/value providers and anything resolved via ModuleRef/request scope at runtime is not visible.',
 };
 
@@ -26,11 +28,32 @@ function gitInfo(root) {
   }
 }
 
+// Manifest files: tracked plus untracked-but-not-ignored, so a dirty working tree is seen as it is.
+function manifestFiles(root, exclude, paths) {
+  const re = new RegExp(exclude), vendor = new RegExp(VENDOR);
+  const keep = (f) => !re.test(f) && !vendor.test(f) && (!paths || paths.some((p) => f === p || f.startsWith(`${p.replace(/\/$/, '')}/`)));
+  const res = gitLsFiles(root, MANIFESTS);
+  const files = res
+    ? res.stdout.split('\n').filter(Boolean)
+    : MANIFESTS.flatMap((m) => findFiles(root, m, (r) => !re.test(`${r}/`) && !vendor.test(`${r}/`)));
+  return [...new Set(files)].filter(keep).sort();
+}
+
+// Tracked plus untracked-but-not-ignored files with these names; null outside a git checkout or without git.
+function gitLsFiles(root, names) {
+  try {
+    const res = run('git', ['ls-files', '--cached', '--others', '--exclude-standard', '--', ...names.flatMap((m) => [m, `*/${m}`])], { cwd: root });
+    return res.status === 0 ? res : null;
+  } catch {
+    return null;
+  }
+}
+
 function goModules(root, exclude) {
   const re = new RegExp(exclude), vendor = new RegExp(VENDOR);
-  const res = run('git', ['ls-files', '--', '*go.mod', 'go.mod'], { cwd: root });
+  const res = gitLsFiles(root, ['go.mod']);
   // Outside a git checkout (e.g. a --ref export) walk the tree instead.
-  const files = res.status === 0 ? res.stdout.split('\n').filter(Boolean) : findFiles(root, 'go.mod', (r) => !re.test(`${r}/`) && !vendor.test(`${r}/`));
+  const files = res ? res.stdout.split('\n').filter(Boolean) : findFiles(root, 'go.mod', (r) => !re.test(`${r}/`) && !vendor.test(`${r}/`));
   return files.map((f) => f.replace(/\/?go\.mod$/, '') || '.').filter((d) => d === '.' || (!re.test(`${d}/`) && !vendor.test(`${d}/`))).sort();
 }
 
@@ -122,6 +145,7 @@ export function scan(target, opts = {}) {
     limitations.push(LIMITATIONS['dependency-cruiser']);
   }
 
+  const goMains = [];
   const goDirs = opts.go === 'none' ? [] : opts.go && opts.go !== 'auto' ? opts.go.split(',') : goModules(root, exclude);
   if (goDirs.length) {
     let version = null;
@@ -133,10 +157,20 @@ export function scan(target, opts = {}) {
       for (const d of goDirs) {
         const p = scanGo(root, d);
         parts.push(p);
+        goMains.push(...p.mains);
         analyses.push({ tool: 'go list', scope: d, status: 'ok', note: `module ${p.module}` });
       }
       limitations.push(LIMITATIONS['go list']);
     }
+  }
+
+  if (opts.units !== false) {
+    const files = manifestFiles(root, exclude, opts.paths);
+    const u = scanUnits(root, { files, goMains });
+    parts.push(u);
+    tools.push(...u.tools);
+    analyses.push({ tool: 'manifests', scope: (opts.paths ?? ['.']).join(','), status: 'ok', note: `${u.nodes.length} units from ${files.length} manifests` }, ...u.analyses);
+    limitations.push(LIMITATIONS.manifests);
   }
 
   if (opts.nestEntry) {

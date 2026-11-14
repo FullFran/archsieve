@@ -1,9 +1,9 @@
 {
-  "schemaVersion": "0.1",
+  "schemaVersion": "0.2",
   "kind": "archsieve-snapshot",
   "subject": {
     "name": "ArchSieve",
-    "commit": "d30806debc0e970e9d6c6c5db922464601c1f882",
+    "commit": "e024759969968aa7ffdabb52daec183c1ba544b0",
     "dirty": true
   },
   "tools": [
@@ -17,6 +17,12 @@
       "tool": "dependency-cruiser",
       "scope": "bin,src,test",
       "status": "ok"
+    },
+    {
+      "tool": "manifests",
+      "scope": "bin,src,test",
+      "status": "ok",
+      "note": "0 units from 0 manifests"
     }
   ],
   "nodes": [
@@ -75,6 +81,15 @@
       ]
     },
     {
+      "id": "src/adapters/units.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
       "id": "src/diff.mjs",
       "kind": "file",
       "evidence": [
@@ -121,6 +136,15 @@
     },
     {
       "id": "test/cli.integration.test.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "test/containers.test.mjs",
       "kind": "file",
       "evidence": [
         {
@@ -224,6 +248,18 @@
       ]
     },
     {
+      "source": "src/adapters/units.mjs",
+      "target": "src/util.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/adapters/units.mjs",
+          "detail": "../util.mjs"
+        }
+      ]
+    },
+    {
       "source": "src/diff.mjs",
       "target": "src/render.mjs",
       "kind": "imports",
@@ -309,6 +345,18 @@
     },
     {
       "source": "src/scan.mjs",
+      "target": "src/adapters/units.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/scan.mjs",
+          "detail": "./adapters/units.mjs"
+        }
+      ]
+    },
+    {
+      "source": "src/scan.mjs",
       "target": "src/util.mjs",
       "kind": "imports",
       "evidence": [
@@ -342,10 +390,23 @@
           "detail": "./helpers.mjs"
         }
       ]
+    },
+    {
+      "source": "test/containers.test.mjs",
+      "target": "test/helpers.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "test/containers.test.mjs",
+          "detail": "./helpers.mjs"
+        }
+      ]
     }
   ],
   "findings": [],
   "limitations": [
-    "Static import graph only: no runtime calls, network/IPC/queue/event links, reflection or computed dynamic imports. Unresolvable imports are listed as unknown findings, not guessed."
+    "Static import graph only: no runtime calls, network/IPC/queue/event links, reflection or computed dynamic imports. Unresolvable imports are listed as unknown findings, not guessed.",
+    "Units come from manifests read as data (package.json, Cargo targets via cargo metadata, go.mod and Go main packages, tauri.conf.json). Links between units at runtime (HTTP, IPC, child processes) are not visible statically."
   ]
 }

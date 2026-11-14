@@ -79,6 +79,7 @@ Boxes are blue for code, yellow for npm packages and purple for Nest modules. In
 | JS / TS / MJS / TSX | dependency-cruiser 18.7.2 | Type-only imports are labelled. Vendored dirs (`vendor/`, `third_party/`, `node_modules/`) are boundaries and are not followed. Git-ignored dirs are excluded. |
 | Go | `go list` | Offline (`GOPROXY=off`). Standard library omitted. |
 | NestJS DI | `@nestjs/core` SerializedGraph, `preview: true` | Opt-in `--nest-entry <compiled module>`. **Runs module top-level code**; providers are not instantiated. |
+| Units (containers, packages) | manifests read as data; `cargo metadata --no-deps --offline` | Every `package.json`, `Cargo.toml`, `go.mod`, Go `package main` and `tauri.conf.json` becomes a `container` node with its technology, whether it can run (`bin`, `scripts.start`, a Cargo bin, `package main`) and the manifest that proves it. Links between units at runtime are not visible. `--no-units` skips it. See [ADR 0004](docs/adr/0004-container-level.md). |
 
 ## Known limitations
 

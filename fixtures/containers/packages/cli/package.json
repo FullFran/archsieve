@@ -1,0 +1,1 @@
+{ "name": "@shop/cli", "version": "1.0.0", "type": "module", "bin": { "shop": "cli.mjs" } }

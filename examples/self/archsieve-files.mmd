@@ -1,5 +1,5 @@
 ---
-title: ArchSieve@d30806debc (files)
+title: ArchSieve@e024759969 (files)
 ---
 flowchart LR
   n0["bin/archsieve.mjs"]:::code
@@ -8,30 +8,35 @@ flowchart LR
   n3["src/adapters/golist.mjs"]:::code
   n4["src/adapters/nest-probe.cjs"]:::code
   n5["src/adapters/nest.mjs"]:::code
-  n6["src/diff.mjs"]:::code
-  n7["src/render.mjs"]:::code
-  n8["src/scan.mjs"]:::code
-  n9["src/util.mjs"]:::code
-  n10["src/validate.mjs"]:::code
-  n11["test/cli.integration.test.mjs"]:::code
-  n12["test/helpers.mjs"]:::code
-  n0 -->|"imports"| n6
+  n6["src/adapters/units.mjs"]:::code
+  n7["src/diff.mjs"]:::code
+  n8["src/render.mjs"]:::code
+  n9["src/scan.mjs"]:::code
+  n10["src/util.mjs"]:::code
+  n11["src/validate.mjs"]:::code
+  n12["test/cli.integration.test.mjs"]:::code
+  n13["test/containers.test.mjs"]:::code
+  n14["test/helpers.mjs"]:::code
   n0 -->|"imports"| n7
   n0 -->|"imports"| n8
-  n0 -->|"imports"| n10
-  n2 -->|"imports"| n9
-  n3 -->|"imports"| n9
-  n5 -->|"imports"| n9
-  n6 -->|"imports"| n7
-  n6 -->|"imports"| n8
-  n6 -->|"imports"| n9
+  n0 -->|"imports"| n9
+  n0 -->|"imports"| n11
+  n2 -->|"imports"| n10
+  n3 -->|"imports"| n10
+  n5 -->|"imports"| n10
+  n6 -->|"imports"| n10
+  n7 -->|"imports"| n8
   n7 -->|"imports"| n9
-  n8 -->|"imports"| n2
-  n8 -->|"imports"| n3
-  n8 -->|"imports"| n5
-  n8 -->|"imports"| n9
-  n10 -->|"imports"| n1
-  n11 -->|"imports"| n12
+  n7 -->|"imports"| n10
+  n8 -->|"imports"| n10
+  n9 -->|"imports"| n2
+  n9 -->|"imports"| n3
+  n9 -->|"imports"| n5
+  n9 -->|"imports"| n6
+  n9 -->|"imports"| n10
+  n11 -->|"imports"| n1
+  n12 -->|"imports"| n14
+  n13 -->|"imports"| n14
   linkStyle default stroke:#8c959f,stroke-width:1.5px
   classDef code fill:#ddf4ff,stroke:#0969da,color:#1f2328
   classDef external fill:#fff8c5,stroke:#9a6700,color:#1f2328

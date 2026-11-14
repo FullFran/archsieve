@@ -1,19 +1,23 @@
 {
-  "schemaVersion": "0.1",
+  "schemaVersion": "0.2",
   "kind": "archsieve-diff",
   "before": {
     "name": "before",
-    "commit": "231bbf08d9104ca72d7c3790d48e20e6677873d9",
+    "commit": "e024759969968aa7ffdabb52daec183c1ba544b0",
     "dirty": false
   },
   "after": {
     "name": "after",
-    "commit": "231bbf08d9104ca72d7c3790d48e20e6677873d9",
+    "commit": "e024759969968aa7ffdabb52daec183c1ba544b0",
     "dirty": false
   },
   "warnings": [],
   "summary": {
     "nodes": {
+      "container": {
+        "before": 1,
+        "after": 1
+      },
       "external-package": {
         "before": 1,
         "after": 1

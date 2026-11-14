@@ -10,7 +10,7 @@ const USAGE = `archsieve: architecture evidence for coding agents (V0, experimen
 
 Usage:
   archsieve scan <dir> [--ref <git-ref>] [-o snapshot.json] [--paths a,b] [--exclude <regex, added to defaults>] [--ts-config <file>]
-                       [--no-js] [--go auto|none|<dir,...>] [--nest-entry <compiled module.js> [--nest-export AppModule]]
+                       [--no-js] [--no-units] [--go auto|none|<dir,...>] [--nest-entry <compiled module.js> [--nest-export AppModule]]
   archsieve diff <before.json> <after.json> [--format json|md] [--depth N] [-o file] [--fail-on error|signal|none]
   archsieve render <snapshot.json> [--view components|files|nest] [--depth N] [--format mermaid|dot]
                        [--compare <before.json>] [--externals] [-o file]
@@ -22,7 +22,7 @@ Exit codes: 0 ok, 1 --fail-on threshold reached or invalid document, 2 usage or 
 const OPTIONS = {
   output: { type: 'string', short: 'o' }, ref: { type: 'string' },
   paths: { type: 'string' }, exclude: { type: 'string' }, 'ts-config': { type: 'string' },
-  'no-js': { type: 'boolean' }, go: { type: 'string' },
+  'no-js': { type: 'boolean' }, 'no-units': { type: 'boolean' }, go: { type: 'string' },
   'nest-entry': { type: 'string' }, 'nest-export': { type: 'string' },
   format: { type: 'string' }, 'fail-on': { type: 'string' },
   view: { type: 'string' }, depth: { type: 'string' }, compare: { type: 'string' }, externals: { type: 'boolean' },
@@ -42,7 +42,7 @@ function main(argv) {
     case 'scan': {
       if (args.length !== 1) usageError('scan needs exactly one <dir>');
       const snap = (o.ref ? (d, x) => scanRef(d, o.ref, x) : scan)(args[0], {
-        paths: o.paths?.split(','), exclude: o.exclude, tsConfig: o['ts-config'], js: !o['no-js'],
+        paths: o.paths?.split(','), exclude: o.exclude, tsConfig: o['ts-config'], js: !o['no-js'], units: !o['no-units'],
         go: o.go ?? 'auto', nestEntry: o['nest-entry'], nestExport: o['nest-export'],
       });
       out(`${JSON.stringify(snap, null, 2)}\n`, o.output);
