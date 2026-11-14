@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 // Reads the JSON that `likec4 export json --skip-layout` writes and translates it into ArchSieve's
 // neutral declared model. LikeC4 itself is never required or run: the export is plain data.
 //
-// Neutral model: { elements: [{ id, title, technology?, path?, parent? }], links: [{ source, target, title?, technology? }] }
+// Neutral model: { elements: [{ id, title, technology?, path?, parent? }], links: [{ source, target, title?, technology?, link? }] }
+// `link` ('code' or 'runtime') comes from relation metadata `metadata { link 'code' }` and overrides the technology mapping.
 // `path` comes from the standard LikeC4 element metadata `metadata { path '<dir>' }`.
 export function readLikeC4(file) {
   let doc;
@@ -35,6 +36,7 @@ export function readLikeC4(file) {
     target: r.target?.model,
     ...(r.title ? { title: r.title } : {}),
     ...(r.technology ? { technology: r.technology } : {}),
+    ...(r.metadata?.link === 'code' || r.metadata?.link === 'runtime' ? { link: r.metadata.link } : {}),
   }));
   return { format: 'likec4', elements, links };
 }

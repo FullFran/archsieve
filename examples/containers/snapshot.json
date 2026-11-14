@@ -1,9 +1,9 @@
 {
-  "schemaVersion": "0.2",
+  "schemaVersion": "0.3",
   "kind": "archsieve-snapshot",
   "subject": {
     "name": "containers",
-    "commit": "84bba8715e0555882fe0076fd286b20a152b3393",
+    "commit": "f7453fc4de92fd24b32e84f3bd13be2c9295725c",
     "dirty": false
   },
   "tools": [
@@ -48,6 +48,12 @@
       "scope": "architecture/model.likec4.json",
       "status": "ok",
       "note": "likec4: 8 elements, 4 links"
+    },
+    {
+      "tool": "test globs",
+      "scope": ".",
+      "status": "ok",
+      "note": "0 test files or packages; globs: **/test/**, **/tests/**, **/__tests__/**, **/*.test.*, **/*.spec.*, **/*_test.*"
     }
   ],
   "nodes": [
