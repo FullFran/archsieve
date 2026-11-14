@@ -10,6 +10,7 @@ import { scanUnits, linkUnits, MANIFESTS } from './adapters/units.mjs';
 import { readLikeC4 } from './adapters/likec4.mjs';
 import { applyModel, crossCheckLinks, modelEvidenceFile } from './model.mjs';
 import { markTests, DEFAULT_TEST_GLOBS } from './tests.mjs';
+import { runtimeLinks } from './adapters/patterns.mjs';
 import { tsConfigHints } from './adapters/tsconfig.mjs';
 import { readHistory, applyHistory, DEFAULT_SINCE, MAX_CHANGESET } from './adapters/history.mjs';
 
@@ -20,6 +21,7 @@ const LIMITATIONS = {
   'go list': 'Go package import graph only; standard library omitted; external packages collapsed to host/org/repo. Built with the current GOOS/GOARCH and no build tags, so tagged files may be missing. Rust/Tauri code is not analyzed in V0.',
   manifests: 'Units come from manifests read as data (package.json, Cargo targets via cargo metadata, go.mod and Go main packages, tauri.conf.json). Links between units at runtime (HTTP, IPC, child processes) are not visible statically.',
   model: 'The declared model is read as exported, never run. A declared-unverified link is not wrong, only unproven: runtime links (HTTP, IPC, child processes) have no static evidence.',
+  patterns: 'Runtime links from call sites are read line by line, not parsed (ADR 0006): a child-process call counts only when its program is a string literal or a same-file const, and it is matched to a container by path or bin name. Calls built at runtime are unknown findings; HTTP, IPC and queues are not covered.',
   history: 'Change history (git log) is a heuristic: churn counts commits, and co-change between containers is a signal of hidden coupling, never proof of a link. Commits touching more than ' + MAX_CHANGESET + ' files are left out.',
   'nest': 'NestJS DI graph as registered by Nest in preview mode: providers are not instantiated, so factory/value providers and anything resolved via ModuleRef/request scope at runtime is not visible.',
 };
@@ -237,6 +239,13 @@ export function scan(target, opts = {}) {
   snapshot.analyses.push({ tool: 'test globs', scope: (opts.paths ?? ['.']).join(','), status: 'ok', note: `${marked} test files or packages; globs: ${testGlobs.join(', ')}` });
   if (opts.units !== false || declared) {
     snapshot.edges.push(...linkUnits(root, snapshot));
+  }
+  if (opts.units !== false) {
+    const r = runtimeLinks(root, snapshot);
+    snapshot.edges.push(...r.edges);
+    for (const f of r.findings) snapshot.findings.push({ id: findingId(f), ...f });
+    snapshot.analyses.push(r.analysis);
+    snapshot.limitations.push(LIMITATIONS.patterns);
   }
   if (declared) {
     for (const f of crossCheckLinks(snapshot, declared.links)) snapshot.findings.push({ id: findingId(f), ...f });

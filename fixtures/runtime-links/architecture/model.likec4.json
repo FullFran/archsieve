@@ -1,0 +1,11 @@
+{
+  "elements": {
+    "launcher": { "id": "launcher", "title": "Launcher", "metadata": { "path": "launcher" } },
+    "worker": { "id": "worker", "title": "Worker", "metadata": { "path": "worker" } },
+    "tool": { "id": "tool", "title": "Tool", "metadata": { "path": "tool" } }
+  },
+  "relations": {
+    "r1": { "id": "r1", "source": { "model": "launcher" }, "target": { "model": "worker" }, "title": "runs", "technology": "stdio" },
+    "r2": { "id": "r2", "source": { "model": "launcher" }, "target": { "model": "tool" }, "title": "calls", "technology": "HTTP" }
+  }
+}
