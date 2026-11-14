@@ -12,7 +12,7 @@ const USAGE = `archsieve: architecture evidence for coding agents (V0, experimen
 
 Usage:
   archsieve scan <dir> [--ref <git-ref>] [-o snapshot.json] [--paths a,b] [--exclude <regex, added to defaults>] [--ts-config <file>]
-                       [--test-globs <glob,...>] [--history [--since <N>d|<date> (default 90d)] [--co-change-min N (default 5)]]
+                       [--test-globs <glob,...>] [--entry-globs <glob,...>] [--history [--since <N>d|<date> (default 90d)] [--co-change-min N (default 5)]]
                        [--no-js] [--no-units] [--model <likec4.json>] [--go auto|none|<dir,...>] [--nest-entry <compiled module.js> [--nest-export AppModule]]
   archsieve diff <before.json> <after.json> [--format json|md] [--depth N] [-o file] [--fail-on error|signal|none] [--no-tests]
   archsieve render <snapshot.json> [--view components|files|nest|containers] [--depth N] [--format mermaid|dot|md]
@@ -41,10 +41,12 @@ commit's date, and co-change-without-link signals for containers that change tog
 
 Tests: scan marks files matching --test-globs (default: ${DEFAULT_TEST_GLOBS.join(', ')}) as test; labels show
 the test share, e.g. "imports x152 (test x148)". --no-tests (render, diff) leaves imports from test files out.
+A production file that only tests (or other such files) import, and that no package.json main/module/browser/bin/
+exports or --entry-globs names as an entry point, is a test-only-module signal, one per retired folder.
 
 affected: JSON with the files that import the changed ones directly or indirectly (reverse closure, changed files
 included), the test files among them, and "blind": every reason the answer may be incomplete (changed files not in
-the graph, unresolved imports that may point into it, skipped analyses, a stale snapshot). Run everything when blind
+the graph, unresolved imports that may point into it, skipped import-graph analyses, a stale snapshot). Run everything when blind
 is not empty. --base reads git diff --name-only <ref> in --repo (default: current directory).
 
 Exit codes: 0 ok, 1 --fail-on threshold reached or invalid document, 2 usage or tool error.
@@ -54,7 +56,7 @@ const OPTIONS = {
   output: { type: 'string', short: 'o' }, ref: { type: 'string' },
   paths: { type: 'string' }, exclude: { type: 'string' }, 'ts-config': { type: 'string' },
   history: { type: 'boolean' }, since: { type: 'string' }, 'co-change-min': { type: 'string' },
-  'test-globs': { type: 'string' }, 'no-tests': { type: 'boolean' },
+  'test-globs': { type: 'string' }, 'entry-globs': { type: 'string' }, 'no-tests': { type: 'boolean' },
   changed: { type: 'string', multiple: true }, base: { type: 'string' }, repo: { type: 'string' }, ignore: { type: 'string' },
   'no-js': { type: 'boolean' }, 'no-units': { type: 'boolean' }, model: { type: 'string' }, go: { type: 'string' },
   'nest-entry': { type: 'string' }, 'nest-export': { type: 'string' },
@@ -80,7 +82,7 @@ function main(argv) {
       const snap = (o.ref ? (d, x) => scanRef(d, o.ref, x) : scan)(args[0], {
         paths: o.paths?.split(','), exclude: o.exclude, tsConfig: o['ts-config'], js: !o['no-js'], units: !o['no-units'], model: o.model,
         history: !!o.history, since: o.since, coChangeMin: positive(o['co-change-min'], 'co-change-min'),
-        testGlobs: o['test-globs']?.split(',').map((g) => g.trim()).filter(Boolean), go: o.go ?? 'auto', nestEntry: o['nest-entry'], nestExport: o['nest-export'],
+        testGlobs: o['test-globs']?.split(',').map((g) => g.trim()).filter(Boolean), entryGlobs: o['entry-globs']?.split(',').map((g) => g.trim()).filter(Boolean), go: o.go ?? 'auto', nestEntry: o['nest-entry'], nestExport: o['nest-export'],
       });
       out(`${JSON.stringify(snap, null, 2)}\n`, o.output);
       const c = { error: 0, signal: 0, unknown: 0 };
