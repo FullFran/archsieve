@@ -42,6 +42,21 @@ export function diff(before, after, { depth = 2, noTests = false } = {}) {
     added: cn.added.map((n) => n.label), removed: cn.removed.map((n) => n.label),
     dependencies: { added: ce.added.map(dep), removed: ce.removed.map(dep) },
   };
+  // Container facts that changed, for containers present with facts on both sides.
+  const factsOf = (snap) => new Map(snap.nodes.filter((n) => n.kind === 'container' && n.facts).map((n) => [n.id, n.facts]));
+  const fb = factsOf(before), fa = factsOf(after);
+  const deps = (f) => f.manifests.reduce((s, m) => s + (m.dependencies ?? 0) + (m.devDependencies ?? 0), 0);
+  const containerFacts = [];
+  for (const [id, a] of [...fa].sort(([x], [y]) => (x < y ? -1 : 1))) {
+    const b = fb.get(id);
+    if (!b) continue;
+    const tb = new Set(b.toolchains.map((t) => t.name)), ta = new Set(a.toolchains.map((t) => t.name));
+    const c = {
+      id, files: { before: b.files, after: a.files }, lines: { before: b.lines, after: a.lines }, dependencies: { before: deps(b), after: deps(a) },
+      toolchains: { added: [...ta].filter((t) => !tb.has(t)).sort(), removed: [...tb].filter((t) => !ta.has(t)).sort() },
+    };
+    if (c.files.before !== c.files.after || c.lines.before !== c.lines.after || c.dependencies.before !== c.dependencies.after || c.toolchains.added.length || c.toolchains.removed.length) containerFacts.push(c);
+  }
   return {
     schemaVersion: SCHEMA_VERSION,
     kind: 'archsieve-diff',
@@ -58,6 +73,7 @@ export function diff(before, after, { depth = 2, noTests = false } = {}) {
     nodes: nodes,
     edges: edges,
     findings: { new: f.added, resolved: f.removed },
+    ...(fb.size && fa.size ? { containerFacts } : {}),
   };
 }
 
@@ -85,6 +101,14 @@ export function toMarkdown(d) {
   for (const x of c.removed) L.push(`- removed component \`${x}\``);
   for (const x of c.dependencies.added) L.push(`- NEW dependency \`${x.from}\` -> \`${x.to}\` (${x.fileEdges} file import(s)${x.testEdges ? `, ${x.testEdges} from tests` : ''})`);
   for (const x of c.dependencies.removed) L.push(`- removed dependency \`${x.from}\` -> \`${x.to}\``);
+  if (d.containerFacts?.length) {
+    const cell = (v) => (v.before === v.after ? `${v.after}` : `${v.after} (${v.after > v.before ? '+' : ''}${v.after - v.before})`);
+    L.push('', '## Container facts', '', '| Container | Files | Lines | Dependencies | Toolchains |', '|---|---:|---:|---:|---|');
+    for (const c of d.containerFacts) {
+      const tc = [c.toolchains.added.length && `added: ${c.toolchains.added.join(', ')}`, c.toolchains.removed.length && `removed: ${c.toolchains.removed.join(', ')}`].filter(Boolean).join('; ') || 'no change';
+      L.push(`| ${c.id.replace(/^container:/, '')} | ${cell(c.files)} | ${cell(c.lines)} | ${cell(c.dependencies)} | ${tc} |`);
+    }
+  }
   L.push('', '## New findings');
   sec('Errors: verifiable regressions', 'error', d.findings.new);
   sec('Signals: heuristics, need human/agent judgement', 'signal', d.findings.new);

@@ -35,7 +35,7 @@ function containerNode(n) {
   if (n.kind === 'system') return { id: n.id, label: `${n.title}<br/>external system`, kind: 'system', group };
   const tech = n.declared?.technology ?? n.technology.join('+');
   const lines = [n.declared?.title ?? n.title, `${n.path}${tech ? ` · ${tech}` : ''}`, ...(STATE_TEXT[n.status] ? [STATE_TEXT[n.status]] : [])];
-  return { id: n.id, label: lines.join('<br/>'), kind: 'container', group, ...(n.status ? { state: n.status } : {}) };
+  return { id: n.id, label: lines.join('<br/>'), kind: 'container', group, ...(n.status ? { state: n.status } : {}), ...(n.facts ? { path: n.path, facts: n.facts } : {}) };
 }
 
 export function project(snapshot, { view = 'components', depth = 2, externals = false, within = null } = {}) {
@@ -359,8 +359,22 @@ function legendRows(p, view) {
   return rows;
 }
 
+// Container facts as a table: what a maintainer of each container has to know and carry.
+const factsCells = (f) => {
+  const langs = Object.entries(f.languages).sort(([a, x], [b, y]) => y.lines - x.lines || (a < b ? -1 : 1)).slice(0, 5).map(([l, x]) => `${l} ${x.lines}`).join(', ');
+  const counts = (m) => [m.dependencies !== undefined && `${m.dependencies} dep${m.dependencies === 1 ? "" : "s"}`, m.devDependencies && `${m.devDependencies} dev`, m.indirect && `${m.indirect} indirect`].filter(Boolean).join(', ');
+  const name = (m) => m.file.split('/').pop();
+  const manifests = [...f.manifests.filter((m) => m.kind !== 'lockfile').map((m) => (counts(m) ? `${name(m)} (${counts(m)})` : name(m))), ...f.manifests.filter((m) => m.kind === 'lockfile').map(name)].join(', ');
+  return [f.files, f.lines, langs || '-', manifests || '-', f.toolchains.map((t) => t.name).join(', ') || '-'];
+};
+function factsTable(p) {
+  const rows = p.nodes.filter((n) => n.facts).sort(byKey((n) => n.path)).map((n) => `| ${n.path} | ${factsCells(n.facts).join(' | ')} |`);
+  return rows.length ? ['**Container facts**', '', 'Counted from the files in each container (lockfiles left out of files and lines); facts, not a score.', '',
+    '| Container | Files | Lines | Languages (lines) | Manifests | Toolchains |', '| --- | ---: | ---: | --- | --- | --- |', ...rows, ''] : [];
+}
+
 export function toMarkdownView(d) {
   const rows = legendRows(d.projection, d.view).map(([m, t]) => `| ${m} | ${t} |`);
   return [`## ${d.title}`, '', d.concern, '', d.scope, '', '```mermaid', toMermaid(d.projection, { title: d.title }).trimEnd(), '```', '',
-    '**Legend**', '', '| Mark | Meaning |', '| --- | --- |', ...rows, ''].join('\n');
+    '**Legend**', '', '| Mark | Meaning |', '| --- | --- |', ...rows, '', ...(d.view === 'containers' ? factsTable(d.projection) : [])].join('\n');
 }

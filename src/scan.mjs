@@ -11,10 +11,11 @@ import { readLikeC4 } from './adapters/likec4.mjs';
 import { applyModel, crossCheckLinks, modelEvidenceFile } from './model.mjs';
 import { markTests, testMatcher, DEFAULT_TEST_GLOBS } from './tests.mjs';
 import { runtimeLinks } from './adapters/patterns.mjs';
+import { containerFacts } from './adapters/facts.mjs';
 import { tsConfigHints } from './adapters/tsconfig.mjs';
 import { readHistory, applyHistory, DEFAULT_SINCE, MAX_CHANGESET } from './adapters/history.mjs';
 
-export const SCHEMA_VERSION = '0.4';
+export const SCHEMA_VERSION = '0.5';
 
 const LIMITATIONS = {
   'dependency-cruiser': 'Static import graph only: no runtime calls, network/IPC/queue/event links, reflection or computed dynamic imports. Unresolvable imports are listed as unknown findings, not guessed.',
@@ -83,6 +84,16 @@ function sourceFiles(root, exclude, paths, isTest, ext) {
   const res = gitLsFiles(root, [`*${ext}`]);
   const files = res ? res.stdout.split('\n').filter(Boolean) : findFiles(root, (n) => n.endsWith(ext), (r) => !re.test(`${r}/`) && !vendor.test(`${r}/`) && !r.endsWith('target'), '', 8);
   return [...new Set(files)].filter((f) => f.endsWith(ext) && keep(f)).sort();
+}
+
+// Every file for container facts: tracked plus untracked-but-not-ignored; outside git, a walk.
+function allFiles(root, exclude, paths) {
+  const re = new RegExp(exclude), vendor = new RegExp(VENDOR);
+  const keep = (f) => !re.test(f) && !vendor.test(f) && (!paths || paths.some((p) => f.startsWith(`${p.replace(/\/$/, '')}/`)));
+  let res = null;
+  try { res = run('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', '.'], { cwd: root }); } catch { /* no git */ }
+  const files = res?.status === 0 ? res.stdout.split('\0').filter(Boolean) : findFiles(root, () => true, (r) => !re.test(`${r}/`) && !vendor.test(`${r}/`), '', 30);
+  return [...new Set(files)].filter(keep).sort();
 }
 
 function findFiles(root, name, keep, rel = '', depth = 4) {
@@ -251,6 +262,11 @@ export function scan(target, opts = {}) {
     snapshot.edges.push(...linkUnits(root, snapshot));
   }
   if (opts.units !== false) {
+    const containers = snapshot.nodes.filter((n) => n.kind === 'container');
+    const files = allFiles(root, exclude, opts.paths);
+    const cf = containerFacts(root, containers, files);
+    for (const n of containers) n.facts = cf.facts.get(n.id);
+    snapshot.analyses.push({ tool: 'container facts', scope: (opts.paths ?? ['.']).join(','), status: 'ok', note: `${files.length} files; ${cf.outside} file${cf.outside === 1 ? '' : 's'} outside every container${cf.unreadable ? `; ${cf.unreadable} unreadable` : ''}` });
     const isTest = testMatcher(testGlobs);
     const r = runtimeLinks(root, snapshot, { rustFiles: sourceFiles(root, exclude, opts.paths, isTest, '.rs'), goFiles: sourceFiles(root, exclude, opts.paths, isTest, '.go') });
     snapshot.edges.push(...r.edges);

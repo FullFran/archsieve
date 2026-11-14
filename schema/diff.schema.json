@@ -6,7 +6,7 @@
   "required": ["schemaVersion", "kind", "before", "after", "warnings", "summary", "components", "nodes", "edges", "findings"],
   "additionalProperties": false,
   "properties": {
-    "schemaVersion": { "enum": ["0.1", "0.2", "0.3", "0.4"] },
+    "schemaVersion": { "enum": ["0.1", "0.2", "0.3", "0.4", "0.5"] },
     "kind": { "const": "archsieve-diff" },
     "before": { "$ref": "snapshot-0.1.json#/$defs/subject" },
     "after": { "$ref": "snapshot-0.1.json#/$defs/subject" },
@@ -34,6 +34,12 @@
     },
     "nodes": { "type": "object", "$ref": "#/$defs/addedRemoved", "properties": { "added": { "type": "array", "items": { "$ref": "snapshot-0.1.json#/$defs/node" } }, "removed": { "type": "array", "items": { "$ref": "snapshot-0.1.json#/$defs/node" } } } },
     "edges": { "type": "object", "$ref": "#/$defs/addedRemoved", "properties": { "added": { "type": "array", "items": { "$ref": "snapshot-0.1.json#/$defs/edge" } }, "removed": { "type": "array", "items": { "$ref": "snapshot-0.1.json#/$defs/edge" } } } },
+    "containerFacts": {
+      "type": "array", "description": "Containers present with facts in both snapshots whose files, lines, declared dependencies or toolchains changed. Absent when either snapshot has no facts.",
+      "items": { "type": "object", "required": ["id", "files", "lines", "dependencies", "toolchains"], "additionalProperties": false, "properties": {
+        "id": { "type": "string" }, "files": { "$ref": "#/$defs/count" }, "lines": { "$ref": "#/$defs/count" }, "dependencies": { "$ref": "#/$defs/count" },
+        "toolchains": { "type": "object", "required": ["added", "removed"], "additionalProperties": false, "properties": { "added": { "type": "array", "items": { "type": "string" } }, "removed": { "type": "array", "items": { "type": "string" } } } } } }
+    },
     "findings": {
       "type": "object", "required": ["new", "resolved"], "additionalProperties": false,
       "properties": { "new": { "type": "array", "items": { "$ref": "snapshot-0.1.json#/$defs/finding" } }, "resolved": { "type": "array", "items": { "$ref": "snapshot-0.1.json#/$defs/finding" } } }

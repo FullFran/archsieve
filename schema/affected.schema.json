@@ -7,7 +7,7 @@
   "required": ["schemaVersion", "kind", "subject", "changed", "ignored", "files", "tests", "blind", "limitations"],
   "additionalProperties": false,
   "properties": {
-    "schemaVersion": { "enum": ["0.3", "0.4"] },
+    "schemaVersion": { "enum": ["0.3", "0.4", "0.5"] },
     "kind": { "const": "archsieve-affected" },
     "subject": { "$ref": "snapshot-0.1.json#/$defs/subject" },
     "base": { "type": "string", "description": "The git ref the changed files were read from (git diff --name-only)." },

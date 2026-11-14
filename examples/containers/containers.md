@@ -1,12 +1,12 @@
-## Containers of containers@84bba8715e
+## Containers of containers@ec1f38224d
 
 Which units run or ship, and how do they depend on each other?
 
-Snapshot containers@84bba8715e · showing 9 of 9 containers and systems
+Snapshot containers@ec1f38224d · showing 9 of 9 containers and systems
 
 ```mermaid
 ---
-title: "Containers of containers@84bba8715e"
+title: "Containers of containers@ec1f38224d"
 ---
 flowchart LR
   n0["shop<br/>. · node<br/>in code, not in model"]:::undeclared
@@ -53,3 +53,18 @@ flowchart LR
 | `package-dependency` | A package.json dependency on the other container |
 | Dashed arrow ending in `unverified` | Declared in the model, no static evidence in the code (runtime links such as HTTP or IPC are never visible statically) |
 | Arrow ending in `not in model` | Found in the code, not declared in the model |
+
+**Container facts**
+
+Counted from the files in each container (lockfiles left out of files and lines); facts, not a score.
+
+| Container | Files | Lines | Languages (lines) | Manifests | Toolchains |
+| --- | ---: | ---: | --- | --- | --- |
+| . | 3 | 72 | likec4 64, json 8 | package.json (0 deps) | node |
+| api | 1 | 3 | javascript 3 | - | - |
+| desktop | 2 | 2 | javascript 1, json 1 | package.json (0 deps) | node |
+| desktop/src-tauri | 3 | 12 | rust 7, toml 4, json 1 | Cargo.toml (0 deps) | rust, tauri |
+| packages/cli | 2 | 5 | javascript 4, json 1 | package.json (1 dep) | node |
+| packages/shared | 2 | 2 | javascript 1, json 1 | package.json (0 deps) | node |
+| svc | 3 | 12 | go 12 | go.mod (0 deps) | go |
+| workers/mailer | 0 | 0 | - | - | - |
