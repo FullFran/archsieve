@@ -75,8 +75,9 @@ export function affected(snapshot, { changed = [], base = null, repo = '.', igno
   const names = new Set([...closure, ...kept].flatMap((f) => (stem(f) === 'index' ? [posix.basename(posix.dirname(f))] : [stem(f)])));
   for (const f of snapshot.findings) {
     if (f.rule !== 'unresolved-import') continue;
-    const spec = f.evidence?.[0]?.detail;
-    if (spec && names.has(stem(spec.replace(/\/+$/, '')))) blind.push({ reason: 'unresolved-import', file: f.subjects[0], detail: spec });
+    for (const { detail: spec } of f.evidence ?? []) {
+      if (spec && names.has(stem(spec.replace(/\/+$/, '')))) blind.push({ reason: 'unresolved-import', file: f.subjects[0], detail: spec });
+    }
   }
   for (const a of snapshot.analyses) if (a.status !== 'ok') blind.push({ reason: 'analysis-skipped', detail: `${a.tool} (${a.scope}): ${a.note ?? a.status}` });
   const marked = snapshot.analyses.some((a) => a.tool === 'test globs');

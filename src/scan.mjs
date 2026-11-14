@@ -10,6 +10,7 @@ import { scanUnits, linkUnits, MANIFESTS } from './adapters/units.mjs';
 import { readLikeC4 } from './adapters/likec4.mjs';
 import { applyModel, crossCheckLinks, modelEvidenceFile } from './model.mjs';
 import { markTests, DEFAULT_TEST_GLOBS } from './tests.mjs';
+import { tsConfigHints } from './adapters/tsconfig.mjs';
 
 export const SCHEMA_VERSION = '0.3';
 
@@ -61,13 +62,22 @@ function goModules(root, exclude) {
   return files.map((f) => f.replace(/\/?go\.mod$/, '') || '.').filter((d) => d === '.' || (!re.test(`${d}/`) && !vendor.test(`${d}/`))).sort();
 }
 
+// tsconfig*.json files, tracked or untracked-but-not-ignored, outside excluded and vendored dirs.
+function tsConfigFiles(root, exclude) {
+  const re = new RegExp(exclude), vendor = new RegExp(VENDOR);
+  const isTs = (n) => /^tsconfig.*\.json$/.test(n);
+  const res = gitLsFiles(root, ['tsconfig*.json']);
+  const files = res ? res.stdout.split('\n').filter(Boolean) : findFiles(root, isTs, (r) => !re.test(`${r}/`) && !vendor.test(`${r}/`));
+  return [...new Set(files)].filter((f) => isTs(f.split('/').pop()) && !re.test(f) && !vendor.test(f)).sort();
+}
+
 function findFiles(root, name, keep, rel = '', depth = 4) {
   const out = [];
   let entries = [];
   try { entries = readdirSync(join(root, rel), { withFileTypes: true }); } catch { return out; }
   for (const e of entries) {
     const r = rel ? `${rel}/${e.name}` : e.name;
-    if (e.isFile() && e.name === name) out.push(r);
+    if (e.isFile() && (typeof name === 'function' ? name(e.name) : e.name === name)) out.push(r);
     else if (e.isDirectory() && depth > 0 && e.name !== '.git' && keep(r)) out.push(...findFiles(root, name, keep, r, depth - 1));
   }
   return out;
@@ -143,9 +153,26 @@ export function scan(target, opts = {}) {
   const parts = [], tools = [], analyses = [], limitations = [];
 
   if (opts.js !== false) {
-    parts.push(scanDepcruise(root, { paths: opts.paths, exclude, tsConfig: opts.tsConfig }));
+    const auto = opts.tsConfig === 'auto';
+    const given = auto ? null : opts.tsConfig ?? null;
+    let js = scanDepcruise(root, { paths: opts.paths, exclude, tsConfig: given });
+    // Unresolved imports that a tsconfig `paths` alias would resolve: hint the exact flag, or with
+    // --ts-config auto rescan with the only tsconfig that matches.
+    const unresolved = () => js.findings.filter((f) => f.rule === 'unresolved-import');
+    const tsFiles = unresolved().length ? tsConfigFiles(root, exclude) : [];
+    let hints = tsConfigHints(root, tsFiles, unresolved()).filter((h) => h.file !== given?.replace(/^\.\//, ''));
+    let note;
+    if (auto) {
+      if (hints.length === 1) {
+        note = `--ts-config auto: ${hints[0].file} (paths matched ${hints[0].count} unresolved imports)`;
+        js = scanDepcruise(root, { paths: opts.paths, exclude, tsConfig: hints[0].file });
+        hints = tsConfigHints(root, tsFiles, unresolved()).filter((h) => h.file !== hints[0].file);
+      } else note = `--ts-config auto: ${hints.length ? `ambiguous (${hints.map((h) => h.file).join(', ')}), none used` : 'no tsconfig paths match the unresolved imports, none used'}`;
+    } else if (given) note = `--ts-config ${given}`;
+    js.findings.push(...hints.map((h) => h.finding));
+    parts.push(js);
     tools.push({ name: 'dependency-cruiser', version: DC_VERSION });
-    analyses.push({ tool: 'dependency-cruiser', scope: (opts.paths ?? ['.']).join(','), status: 'ok' });
+    analyses.push({ tool: 'dependency-cruiser', scope: (opts.paths ?? ['.']).join(','), status: 'ok', ...(note ? { note } : {}) });
     limitations.push(LIMITATIONS['dependency-cruiser']);
   }
 

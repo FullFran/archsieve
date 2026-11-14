@@ -31,6 +31,7 @@ Use before designing or reviewing a structural change (new module, service, inte
 | Gate in CI | `diff base.json head.json --fail-on error` (exit 1 on new verifiable regressions) |
 | Coupling buried under test helpers (`imports x152 (test x148)`) | `render ... --no-tests` or `diff ... --no-tests`; custom test layout: `scan --test-globs '<glob>,...'` |
 | Which tests to run for a change | `scan <repo> -o now.json`, then `affected now.json --base <ref> --repo <repo>`; run `tests`, or everything when `blind` is not empty |
+| Many `unresolved-import` unknowns, or a `ts-config-hint` signal | rescan with the `--ts-config <file>` the hint names, or `--ts-config auto` |
 | NestJS DI wiring (trusted code, compiled) | add `--nest-entry dist/app.module.js`; view with `render --view nest` |
 
 ## Execution Steps
