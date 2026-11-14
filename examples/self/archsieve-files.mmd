@@ -1,20 +1,20 @@
 ---
-title: ArchSieve@71a35629d9 (files)
+title: ArchSieve@d30806debc (files)
 ---
 flowchart LR
-  n0["bin/archsieve.mjs"]
-  n1(["npm:ajv"])
-  n2["src/adapters/depcruise.mjs"]
-  n3["src/adapters/golist.mjs"]
-  n4["src/adapters/nest-probe.cjs"]
-  n5["src/adapters/nest.mjs"]
-  n6["src/diff.mjs"]
-  n7["src/render.mjs"]
-  n8["src/scan.mjs"]
-  n9["src/util.mjs"]
-  n10["src/validate.mjs"]
-  n11["test/cli.integration.test.mjs"]
-  n12["test/helpers.mjs"]
+  n0["bin/archsieve.mjs"]:::code
+  n1(["npm:ajv"]):::external
+  n2["src/adapters/depcruise.mjs"]:::code
+  n3["src/adapters/golist.mjs"]:::code
+  n4["src/adapters/nest-probe.cjs"]:::code
+  n5["src/adapters/nest.mjs"]:::code
+  n6["src/diff.mjs"]:::code
+  n7["src/render.mjs"]:::code
+  n8["src/scan.mjs"]:::code
+  n9["src/util.mjs"]:::code
+  n10["src/validate.mjs"]:::code
+  n11["test/cli.integration.test.mjs"]:::code
+  n12["test/helpers.mjs"]:::code
   n0 --> n6
   n0 --> n7
   n0 --> n8
@@ -32,3 +32,9 @@ flowchart LR
   n8 --> n9
   n10 --> n1
   n11 --> n12
+  linkStyle default stroke:#8c959f,stroke-width:1.5px
+  classDef code fill:#ddf4ff,stroke:#0969da,color:#1f2328
+  classDef external fill:#fff8c5,stroke:#9a6700,color:#1f2328
+  classDef module fill:#fbefff,stroke:#8250df,color:#1f2328
+  classDef added fill:#dafbe1,stroke:#2da44e,stroke-width:2px,color:#1f2328
+  classDef removed fill:#ffebe9,stroke:#cf222e,stroke-dasharray:4 3,color:#1f2328

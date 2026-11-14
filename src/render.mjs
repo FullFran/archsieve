@@ -52,6 +52,18 @@ export function compareProjections(before, after) {
 
 const q = (s) => String(s).replace(/"/g, '#quot;');
 
+// Explicit fills, strokes and text colour: GitHub renders Mermaid with the reader's theme, and the default dark
+// theme draws dark-grey edges on a near-black page. These pairs read on both themes.
+const KIND_CLASS = (kind) => (kind === 'external-package' ? 'external' : kind === 'nest-module' ? 'module' : 'code');
+const CLASS_DEFS = [
+  '  classDef code fill:#ddf4ff,stroke:#0969da,color:#1f2328',
+  '  classDef external fill:#fff8c5,stroke:#9a6700,color:#1f2328',
+  '  classDef module fill:#fbefff,stroke:#8250df,color:#1f2328',
+  '  classDef added fill:#dafbe1,stroke:#2da44e,stroke-width:2px,color:#1f2328',
+  '  classDef removed fill:#ffebe9,stroke:#cf222e,stroke-dasharray:4 3,color:#1f2328',
+];
+const nodeClass = (n) => (n.status === 'added' || n.status === 'removed' ? n.status : KIND_CLASS(n.kind));
+
 export function toMermaid(p, { title } = {}) {
   const ids = new Map(p.nodes.map((n, i) => [n.id, `n${i}`]));
   const L = ['flowchart LR'];
@@ -60,7 +72,7 @@ export function toMermaid(p, { title } = {}) {
   for (const n of p.nodes) { const g = n.group ?? ''; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(n); }
   const emit = (n, indent) => {
     const shape = n.kind === 'nest-module' ? `[["${q(n.label)}"]]` : n.kind === 'external-package' ? `(["${q(n.label)}"])` : `["${q(n.label)}"]`;
-    L.push(`${indent}${ids.get(n.id)}${shape}${n.status && n.status !== 'same' ? `:::${n.status}` : ''}`);
+    L.push(`${indent}${ids.get(n.id)}${shape}:::${nodeClass(n)}`);
   };
   // A node that owns members (a Nest module) is drawn AS the subgraph, so edges can target it directly.
   const nodeById = new Map(p.nodes.map((n) => [n.id, n]));
@@ -71,9 +83,10 @@ export function toMermaid(p, { title } = {}) {
     L.push(`  subgraph ${ids.get(g) ?? `g_${ids.size}`}["${q(owner?.label ?? g.split(':').pop())}"]`);
     ns.forEach((n) => emit(n, '    '));
     L.push('  end');
-    if (owner?.status && owner.status !== 'same') L.push(`  class ${ids.get(g)} ${owner.status}`);
+    // Subgraphs ignore `class` in Mermaid: copy the class body into a `style` line.
+    if (owner) L.push(`  style ${ids.get(g)} ${CLASS_DEFS.find((d) => d.startsWith(`  classDef ${nodeClass(owner)} `)).split(' ').pop()}`);
   }
-  const linkStyles = [];
+  const linkStyles = p.edges.length ? ['  linkStyle default stroke:#8c959f,stroke-width:1.5px'] : [];
   p.edges.forEach((e, i) => {
     const label = [e.kind === 'nest-imports' ? 'imports' : e.kind === 'nest-injects' ? 'injects' : '', e.count > 1 ? `${e.count}` : ''].filter(Boolean).join(' x');
     const arrow = e.kind === 'nest-imports' ? '-.->' : e.status === 'removed' ? '-.->' : '-->';
@@ -82,9 +95,7 @@ export function toMermaid(p, { title } = {}) {
     if (e.status === 'removed') linkStyles.push(`  linkStyle ${i} stroke:#cf222e,stroke-width:2px`);
   });
   L.push(...linkStyles);
-  if (p.nodes.some((n) => n.status)) {
-    L.push('  classDef added fill:#dafbe1,stroke:#2da44e,stroke-width:2px', '  classDef removed fill:#ffebe9,stroke:#cf222e,stroke-dasharray:4 3');
-  }
+  L.push(...CLASS_DEFS);
   return `${L.join('\n')}\n`;
 }
 

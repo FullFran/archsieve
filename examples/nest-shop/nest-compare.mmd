@@ -1,17 +1,19 @@
 ---
-title: after@71a35629d9 (nest, compared)
+title: after@d30806debc (nest, compared)
 ---
 flowchart LR
-  n1[["AppModule"]]
+  n1[["AppModule"]]:::module
   subgraph n2["OrdersModule"]
-    n4["OrdersService"]
+    n4["OrdersService"]:::code
   end
+  style n2 fill:#fbefff,stroke:#8250df,color:#1f2328
   subgraph n3["UsersModule"]
-    n0["UsersController"]
+    n0["UsersController"]:::code
     n5["CLOCK"]:::added
     n6["InMemoryUsersRepository"]:::added
-    n7["UsersService"]
+    n7["UsersService"]:::code
   end
+  style n3 fill:#fbefff,stroke:#8250df,color:#1f2328
   n0 -->|"injects"| n7
   n1 -.->|"imports"| n2
   n1 -.->|"imports"| n3
@@ -20,8 +22,12 @@ flowchart LR
   n4 -->|"injects"| n7
   n7 -->|"injects"| n4
   n7 -->|"injects"| n6
+  linkStyle default stroke:#8c959f,stroke-width:1.5px
   linkStyle 4 stroke:#2da44e,stroke-width:3px
   linkStyle 6 stroke:#2da44e,stroke-width:3px
   linkStyle 7 stroke:#2da44e,stroke-width:3px
-  classDef added fill:#dafbe1,stroke:#2da44e,stroke-width:2px
-  classDef removed fill:#ffebe9,stroke:#cf222e,stroke-dasharray:4 3
+  classDef code fill:#ddf4ff,stroke:#0969da,color:#1f2328
+  classDef external fill:#fff8c5,stroke:#9a6700,color:#1f2328
+  classDef module fill:#fbefff,stroke:#8250df,color:#1f2328
+  classDef added fill:#dafbe1,stroke:#2da44e,stroke-width:2px,color:#1f2328
+  classDef removed fill:#ffebe9,stroke:#cf222e,stroke-dasharray:4 3,color:#1f2328

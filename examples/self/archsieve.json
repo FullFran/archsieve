@@ -3,8 +3,8 @@
   "kind": "archsieve-snapshot",
   "subject": {
     "name": "ArchSieve",
-    "commit": "71a35629d99f06fa56febd40ee5f793f79f48e43",
-    "dirty": false
+    "commit": "d30806debc0e970e9d6c6c5db922464601c1f882",
+    "dirty": true
   },
   "tools": [
     {
@@ -15,7 +15,7 @@
   "analyses": [
     {
       "tool": "dependency-cruiser",
-      "scope": ".",
+      "scope": "bin,src,test",
       "status": "ok"
     }
   ],

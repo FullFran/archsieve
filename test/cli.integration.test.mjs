@@ -62,6 +62,18 @@ test('render: compared views mark added elements and stay deterministic', (t) =>
   assert.match(dot.stdout, /^digraph archsieve \{/);
 });
 
+test('render: plain Mermaid views carry their own colours so they read on light and dark themes', (t) => {
+  const a = scanNest(t, 'after');
+  const files = cli(['render', a.file, '--view', 'files', '--externals']).stdout;
+  assert.match(files, /^ {2}linkStyle default stroke:#8c959f/m, 'edges get a mid-grey visible on both themes');
+  assert.match(files, /^ {2}classDef code fill:#ddf4ff,stroke:#0969da,color:#1f2328$/m);
+  assert.match(files, /^ {2}classDef external fill:#fff8c5,stroke:#9a6700,color:#1f2328$/m);
+  assert.match(files, /\["src\/users\/users\.service\.ts"\]:::code/);
+  assert.match(files, /\(\["npm:@nestjs\/common"\]\):::external/);
+  const nest = cli(['render', a.file, '--view', 'nest']).stdout;
+  assert.match(nest, /^ {2}style n\d+ fill:#fbefff,stroke:#8250df,color:#1f2328$/m, 'module subgraphs are coloured too');
+});
+
 test('unresolvable and computed imports are reported as unknown, not as edges', (t) => {
   const out = join(scratch(t), 's.json');
   assert.equal(cli(['scan', fixture('js-unknowns'), '-o', out]).code, 0);
