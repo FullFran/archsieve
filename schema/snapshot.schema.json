@@ -44,7 +44,8 @@
       "type": "object", "required": ["source", "target", "kind", "evidence"],
       "properties": {
         "source": { "type": "string" }, "target": { "type": "string" },
-        "kind": { "enum": ["imports", "nest-imports", "nest-injects"] },
+        "kind": { "enum": ["imports", "nest-imports", "nest-injects", "depends-on"] },
+        "relations": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 1 } },
         "typeOnly": { "const": true }, "dynamic": { "const": true },
         "injection": { "enum": ["constructor", "property", "decorator"] }, "token": { "type": "string" },
         "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } }

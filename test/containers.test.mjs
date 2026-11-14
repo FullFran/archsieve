@@ -7,6 +7,7 @@ function scanContainers(t, extra = []) {
   const out = join(scratch(t), 'snap.json');
   const r = cli(['scan', fixture('containers'), '-o', out, ...extra]);
   assert.equal(r.code, 0, r.stderr);
+  assert.equal(cli(['validate', out]).code, 0, 'snapshot is schema-valid');
   return readJson(out);
 }
 
@@ -52,4 +53,18 @@ test('scan: without cargo the Rust units are reported as skipped, never guessed'
   assert.deepEqual(tauri.technology, ['tauri'], 'tauri.conf.json is still read as data');
   assert.equal(tauri.runnable, false, 'no bin target can be proven without cargo');
   assert.ok(snap.analyses.some((a) => a.tool === 'cargo metadata' && a.status === 'skipped'));
+});
+
+test('scan: imports that cross units and package dependencies become depends-on links between units', (t) => {
+  const snap = scanContainers(t);
+  const links = snap.edges.filter((e) => e.kind === 'depends-on').map((e) => [e.source, e.target, e.relations]);
+  assert.deepEqual(links, [
+    ['container:.', 'container:packages/shared', { imports: 1 }],
+    ['container:packages/cli', 'container:packages/shared', { imports: 1, 'package-dependency': 1 }],
+  ]);
+  const cli = snap.edges.find((e) => e.kind === 'depends-on' && e.source === 'container:packages/cli');
+  assert.deepEqual(cli.evidence, [
+    { tool: 'archsieve', file: 'packages/cli/cli.mjs', detail: 'imports packages/shared/index.mjs' },
+    { tool: 'manifest', file: 'packages/cli/package.json', detail: 'dependencies.@shop/shared' },
+  ]);
 });

@@ -6,7 +6,7 @@ import { run, byKey, edgeKey } from './util.mjs';
 import { scanDepcruise, DEFAULT_EXCLUDE, VENDOR, VERSION as DC_VERSION } from './adapters/depcruise.mjs';
 import { scanGo, goVersion } from './adapters/golist.mjs';
 import { scanNest } from './adapters/nest.mjs';
-import { scanUnits, MANIFESTS } from './adapters/units.mjs';
+import { scanUnits, linkUnits, MANIFESTS } from './adapters/units.mjs';
 
 export const SCHEMA_VERSION = '0.2';
 
@@ -186,7 +186,12 @@ export function scan(target, opts = {}) {
     err.code = 'NOTHING_SCANNED';
     throw err;
   }
-  return assemble(opts.subject ?? { name: basename(root), ...gitInfo(root) }, tools, analyses, parts, limitations);
+  const snapshot = assemble(opts.subject ?? { name: basename(root), ...gitInfo(root) }, tools, analyses, parts, limitations);
+  if (opts.units !== false) {
+    snapshot.edges.push(...linkUnits(root, snapshot));
+    snapshot.edges.sort(byKey(edgeKey));
+  }
+  return snapshot;
 }
 
 export function assemble(subject, tools, analyses, parts, limitations) {
