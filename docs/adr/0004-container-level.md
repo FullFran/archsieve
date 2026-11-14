@@ -34,6 +34,8 @@ Among the tools reviewed, none compares a declared container model with what the
    - `unresolved`: a call site that cannot be resolved statically.
 
    There is no score.
+
+   Amended in 0.3 (issue #3): a fifth state, `code-dependency-only`, for a declared runtime link (HTTP, IPC, stdio, child process, queue...) between containers that are coupled in code. An unrelated import must not confirm a runtime link, so only relations with no technology or a code-dependency technology are `confirmed` by imports. The mapping is in `src/model.mjs` (`linkKind`); relation metadata `link 'code' | 'runtime'` overrides it.
 5. **Runtime evidence is a separate source, later.** The open standard for observing runtime links is OpenTelemetry. Static analysis never guesses a runtime link.
 
 ## Consequences

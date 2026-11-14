@@ -22,7 +22,7 @@
       "type": "object", "required": ["name", "commit", "dirty"], "additionalProperties": false,
       "properties": { "name": { "type": "string" }, "commit": { "type": ["string", "null"] }, "dirty": { "type": ["boolean", "null"] } }
     },
-    "crossCheck": { "enum": ["confirmed", "declared-unverified", "undeclared"], "description": "Present only when a declared model was given: confirmed (declared and observed), declared-unverified (declared, no static evidence), undeclared (observed, not declared)." },
+    "crossCheck": { "enum": ["confirmed", "declared-unverified", "undeclared", "code-dependency-only"], "description": "Present only when a declared model was given: confirmed (declared and observed), declared-unverified (declared, no static evidence), undeclared (observed, not declared), code-dependency-only (a declared runtime link between containers that are coupled in code, with no evidence of the runtime link itself)." },
     "declaredElement": {
       "type": "object", "required": ["id", "title"], "additionalProperties": false,
       "properties": { "id": { "type": "string" }, "title": { "type": "string" }, "technology": { "type": "string" }, "parent": { "type": "string" } }
@@ -54,7 +54,7 @@
         "kind": { "enum": ["imports", "nest-imports", "nest-injects", "depends-on"] },
         "relations": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 1 } },
         "testRelations": { "type": "object", "description": "The part of relations whose source is a test file.", "additionalProperties": { "type": "integer", "minimum": 1 } },
-        "declared": { "type": "array", "items": { "type": "object", "properties": { "title": { "type": "string" }, "technology": { "type": "string" } }, "additionalProperties": false } },
+        "declared": { "type": "array", "items": { "type": "object", "properties": { "title": { "type": "string" }, "technology": { "type": "string" }, "link": { "enum": ["code", "runtime"], "description": "Model override (relation metadata link): whether a code dependency confirms this relation." } }, "additionalProperties": false } },
         "status": { "$ref": "#/$defs/crossCheck" },
         "typeOnly": { "const": true }, "dynamic": { "const": true },
         "injection": { "enum": ["constructor", "property", "decorator"] }, "token": { "type": "string" },

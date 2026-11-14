@@ -6,6 +6,7 @@
 - `nodes[].test`: `true` when the path matches a test glob (globs recorded in `analyses`, tool `test globs`); absent means production. A path convention, not proof.
 - `edges[].kind`: `imports` (static; `typeOnly: true` when erased at runtime), `nest-imports`, `nest-injects`.
 - `depends-on` edges: `relations` counts imports and package dependencies between units; `testRelations` is the part that comes from test files.
+- With `--model`, nodes and `depends-on` edges get `status`: `confirmed`, `declared-unverified`, `undeclared`, or (links only) `code-dependency-only`: declared as a runtime link, coupled in code, runtime link itself unproven.
 - Every node and edge has `evidence[]`: which tool reported it and, when the tool reports one, the file and import specifier.
 - `findings[].level`:
   - `error`: verifiable from the evidence (runtime import cycle, DI cycle, Go cycle).

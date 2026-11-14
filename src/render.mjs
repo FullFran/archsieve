@@ -29,7 +29,7 @@ function boundaryOf(n) {
 // A container box says what it is, where it lives, its technology and, with a declared model, its
 // cross-check state in words (never colour alone).
 const STATE_TEXT = { 'declared-unverified': 'declared, unverified', undeclared: 'in code, not in model' };
-const LINK_STATE_TEXT = { 'declared-unverified': 'unverified', undeclared: 'not in model' };
+const LINK_STATE_TEXT = { 'declared-unverified': 'unverified', undeclared: 'not in model', 'code-dependency-only': 'code only, runtime unverified' };
 function containerNode(n) {
   const group = n.declared?.parent ? `group:${n.declared.parent}` : null;
   if (n.kind === 'system') return { id: n.id, label: `${n.title}<br/>external system`, kind: 'system', group };
@@ -303,6 +303,7 @@ function containerLegend(p) {
   if (edge((e) => e.testRelations)) rows.push(['`(test x2)` after a count', 'How many of those imports come from test files (test globs recorded in the snapshot)']);
   if (rel.has('package-dependency')) rows.push(['`package-dependency`', 'A package.json dependency on the other container']);
   if (edge((e) => e.state === 'declared-unverified')) rows.push(['Dashed arrow ending in `unverified`', 'Declared in the model, no static evidence in the code (runtime links such as HTTP or IPC are never visible statically)']);
+  if (edge((e) => e.state === 'code-dependency-only')) rows.push(['Arrow ending in `code only, runtime unverified`', 'Declared as a runtime link (HTTP, IPC, child process, queue...); the code shows imports between the two containers, but nothing proves the runtime link itself']);
   if (edge((e) => e.state === 'undeclared')) rows.push(['Arrow ending in `not in model`', 'Found in the code, not declared in the model']);
   return rows;
 }

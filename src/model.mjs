@@ -84,7 +84,7 @@ export function applyModel(root, units, model, evFile) {
     const k = `${s}\u0000${t}`;
     if (!links.has(k)) links.set(k, { source: s, target: t, declared: [], evidence: [] });
     const x = links.get(k);
-    x.declared.push({ ...(l.title ? { title: l.title } : {}), ...(l.technology ? { technology: l.technology } : {}) });
+    x.declared.push({ ...(l.title ? { title: l.title } : {}), ...(l.technology ? { technology: l.technology } : {}), ...(l.link ? { link: l.link } : {}) });
     x.evidence.push(ev(`${l.source} -> ${l.target}`));
   }
   return {
@@ -94,8 +94,16 @@ export function applyModel(root, units, model, evFile) {
   };
 }
 
+// Which declared relations a code dependency can confirm. No technology, or one that names a code
+// dependency, is confirmed by imports or package dependencies. Anything else (a runtime transport
+// such as HTTP, IPC, stdio, a child process or a queue, or a technology not recognised here) needs
+// evidence of its own. Relation metadata `link 'code'` or `link 'runtime'` overrides the mapping.
+const CODE_TECHNOLOGY = /^\s*(imports?|library|lib|npm( package)?|package( dependency)?|module|crate|go module|code( dependency)?|in-process|function calls?|source)\s*$/i;
+export const linkKind = (d) => d.link ?? (!d.technology || CODE_TECHNOLOGY.test(d.technology) ? 'code' : 'runtime');
+
 // After linking: every declared link is confirmed by an observed depends-on edge or stays
-// declared-unverified; every observed link between declared units that the model lacks is undeclared.
+// declared-unverified; a declared runtime link backed only by code is code-dependency-only; every
+// observed link between declared units that the model lacks is undeclared.
 export function crossCheckLinks(snapshot, declaredLinks) {
   const findings = [];
   const nodes = new Map(snapshot.nodes.map((n) => [n.id, n]));
@@ -103,7 +111,12 @@ export function crossCheckLinks(snapshot, declaredLinks) {
   for (const l of declaredLinks) {
     const e = observed.get(`${l.source}\u0000${l.target}`);
     if (e) {
-      Object.assign(e, { declared: l.declared, status: 'confirmed', evidence: sortEvidence([...e.evidence, ...l.evidence]) });
+      const runtime = l.declared.filter((d) => linkKind(d) === 'runtime');
+      Object.assign(e, { declared: l.declared, status: runtime.length ? 'code-dependency-only' : 'confirmed', evidence: sortEvidence([...e.evidence, ...l.evidence]) });
+      if (runtime.length) {
+        const what = runtime.map((d) => [d.title, d.technology ? `(${d.technology})` : ''].filter(Boolean).join(' ')).join(', ');
+        findings.push({ level: 'unknown', rule: 'code-dependency-only', subjects: [l.source, l.target], message: `Declared runtime link ${l.source} -> ${l.target} ${what}: the containers are coupled in code, but the runtime link itself has no static evidence. Mark a relation \`metadata { link 'code' }\` when the code dependency is the link.`, evidence: l.evidence });
+      }
       continue;
     }
     snapshot.edges.push({ source: l.source, target: l.target, kind: 'depends-on', declared: l.declared, status: 'declared-unverified', evidence: l.evidence });

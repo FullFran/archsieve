@@ -116,3 +116,42 @@ test('render --view containers --format md: legend explains each state, and the 
   assert.doesNotMatch(plain, /not in model|· unverified|declared, unverified|:::unverified|:::undeclared|subgraph/, 'no model, no cross-check marks');
   assert.match(plain, /\["@shop\/cli<br\/>packages\/cli · node"\]:::container/);
 });
+
+// S4 (#3): a declared runtime link (HTTP, IPC, child process, queue...) is not confirmed by imports.
+function modelWith(t, patch) {
+  const doc = readJson(MODEL);
+  const rel = Object.values(doc.relations).find((r) => r.source.model === 'shop.cli' && r.target.model === 'shop.shared');
+  Object.assign(rel, patch);
+  const f = join(scratch(t), 'model.json');
+  writeFileSync(f, JSON.stringify(doc));
+  return f;
+}
+const cliLink = (snap) => snap.edges.find((e) => e.kind === 'depends-on' && e.source === 'container:packages/cli' && e.target === 'container:packages/shared');
+
+test('S4 scan --model: a runtime technology backed only by imports is code-dependency-only, not confirmed', (t) => {
+  const snap = scanWithModel(t, modelWith(t, { technology: 'HTTPS' }));
+  assert.equal(cliLink(snap).status, 'code-dependency-only');
+  const f = snap.findings.find((x) => x.rule === 'code-dependency-only');
+  assert.equal(f.level, 'unknown');
+  assert.deepEqual(f.subjects, ['container:packages/cli', 'container:packages/shared']);
+  assert.match(f.message, /HTTPS/);
+  assert.match(f.message, /coupled in code/);
+  assert.ok(!snap.findings.some((x) => x.rule === 'declared-unverified-link' && x.subjects[0] === 'container:packages/cli'));
+});
+
+test('S4 scan --model: code technologies and the model override keep confirmed; the override can also demand runtime evidence', (t) => {
+  for (const tech of ['npm package', 'library', 'import']) assert.equal(cliLink(scanWithModel(t, modelWith(t, { technology: tech }))).status, 'confirmed', tech);
+  const overridden = scanWithModel(t, modelWith(t, { technology: 'HTTPS', metadata: { link: 'code' } }));
+  assert.equal(cliLink(overridden).status, 'confirmed');
+  assert.deepEqual(cliLink(overridden).declared, [{ title: 'uses', technology: 'HTTPS', link: 'code' }]);
+  assert.equal(cliLink(scanWithModel(t, modelWith(t, { metadata: { link: 'runtime' } }))).status, 'code-dependency-only');
+  assert.equal(cliLink(scanWithModel(t, modelWith(t, { technology: 'Message bus' }))).status, 'code-dependency-only', 'an unrecognised technology needs its own evidence');
+});
+
+test('S4 render --view containers: a code-dependency-only link says so in words', (t) => {
+  const out = join(scratch(t), 'snap.json');
+  assert.equal(cli(['scan', fixture('containers'), '-o', out, '--model', modelWith(t, { technology: 'HTTPS' })]).code, 0);
+  const md = cli(['render', out, '--view', 'containers', '--format', 'md']).stdout;
+  assert.match(md, /\|"uses \(HTTPS\) · imports, package-dependency · code only, runtime unverified"\|/);
+  assert.match(md, /\| Arrow ending in `code only, runtime unverified` \|/);
+});
