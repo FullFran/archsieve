@@ -12,6 +12,7 @@ import { applyModel, crossCheckLinks, modelEvidenceFile } from './model.mjs';
 import { markTests, testMatcher, DEFAULT_TEST_GLOBS } from './tests.mjs';
 import { runtimeLinks } from './adapters/patterns.mjs';
 import { containerFacts } from './adapters/facts.mjs';
+import { pathReferences } from './adapters/references.mjs';
 import { testOnlyModules } from './testonly.mjs';
 import { tsConfigHints } from './adapters/tsconfig.mjs';
 import { readHistory, applyHistory, DEFAULT_SINCE, MAX_CHANGESET } from './adapters/history.mjs';
@@ -24,6 +25,7 @@ const LIMITATIONS = {
   manifests: 'Units come from manifests read as data (package.json, Cargo targets via cargo metadata, go.mod and Go main packages, tauri.conf.json). Links between units at runtime (HTTP, IPC, child processes) are not visible statically.',
   model: 'The declared model is read as exported, never run. A declared-unverified link is not wrong, only unproven: runtime links (HTTP, IPC, child processes) have no static evidence.',
   patterns: 'Runtime links from call sites are read line by line, not parsed (ADR 0006): a child-process call (JS/TS spawn, execFile, fork, execa; Rust Command::new; Tauri sidecars) counts only when its program is a string literal or a same-file constant, and it is matched to a container by path or bin name. HTTP calls count only when their literal path matches the routes of exactly one other container. Calls built at runtime are unknown findings (programs) or only counted (URLs); IPC and queues are not covered.',
+  references: 'Path references are repository paths to tracked files named in comments, string literals and docs, read line by line (ADR 0006). They are hints at pattern confidence, file to file, kept out of views and of affected; a reference that is also an import is left out. Paths built at runtime are not seen, and a mirrored-logic signal comes from the wording of the line, not from comparing code.',
   history: 'Change history (git log) is a heuristic: churn counts commits, and co-change between containers is a signal of hidden coupling, never proof of a link. Commits touching more than ' + MAX_CHANGESET + ' files are left out.',
   'nest': 'NestJS DI graph as registered by Nest in preview mode: providers are not instantiated, so factory/value providers and anything resolved via ModuleRef/request scope at runtime is not visible.',
 };
@@ -281,6 +283,11 @@ export function scan(target, opts = {}) {
     for (const f of r.findings) snapshot.findings.push({ id: findingId(f), ...f });
     snapshot.analyses.push(r.analysis);
     snapshot.limitations.push(LIMITATIONS.patterns);
+    const pr = pathReferences(root, files, { units: containers, imports: snapshot.edges.filter((e) => e.kind === 'imports') });
+    snapshot.edges.push(...pr.edges);
+    for (const f of pr.findings) snapshot.findings.push({ id: findingId(f), ...f });
+    snapshot.analyses.push(pr.analysis);
+    snapshot.limitations.push(LIMITATIONS.references);
   }
   if (declared) {
     for (const f of crossCheckLinks(snapshot, declared.links)) snapshot.findings.push({ id: findingId(f), ...f });

@@ -3,7 +3,7 @@
   "kind": "archsieve-snapshot",
   "subject": {
     "name": "containers",
-    "commit": "ec1f38224d2861909a4a6535c64ab4a3539bfbb8",
+    "commit": "aef4decebd93ac38f4923a3336492ca1fe4b7e7f",
     "dirty": false
   },
   "tools": [
@@ -56,6 +56,12 @@
       "note": "0 test files or packages; globs: **/test/**, **/tests/**, **/__tests__/**, **/*.test.*, **/*.spec.*, **/*_test.*"
     },
     {
+      "tool": "test-only modules",
+      "scope": ".",
+      "status": "skipped",
+      "note": "no test files matched the test globs"
+    },
+    {
       "tool": "container facts",
       "scope": ".",
       "status": "ok",
@@ -66,6 +72,12 @@
       "scope": "child-process, sidecar and HTTP calls",
       "status": "ok",
       "note": "0 runtime links, 0 call sites to programs outside the repository, 0 unresolved; read 0 of 4 production JS/TS files and 0 of 1 Rust file that name a child-process API; HTTP: 0 routes in 0 containers; 0 calls matched, 0 ambiguous, 0 matched no route, 0 without a literal path"
+    },
+    {
+      "tool": "path references",
+      "scope": "comments, strings and docs",
+      "status": "ok",
+      "note": "0 references from 0 files; 2 already an import, left out; 5 files read"
     }
   ],
   "nodes": [
@@ -801,6 +813,7 @@
     "Go package import graph only; standard library omitted; external packages collapsed to host/org/repo. Built with the current GOOS/GOARCH and no build tags, so tagged files may be missing. Rust/Tauri code is not analyzed in V0.",
     "Units come from manifests read as data (package.json, Cargo targets via cargo metadata, go.mod and Go main packages, tauri.conf.json). Links between units at runtime (HTTP, IPC, child processes) are not visible statically.",
     "The declared model is read as exported, never run. A declared-unverified link is not wrong, only unproven: runtime links (HTTP, IPC, child processes) have no static evidence.",
-    "Runtime links from call sites are read line by line, not parsed (ADR 0006): a child-process call (JS/TS spawn, execFile, fork, execa; Rust Command::new; Tauri sidecars) counts only when its program is a string literal or a same-file constant, and it is matched to a container by path or bin name. HTTP calls count only when their literal path matches the routes of exactly one other container. Calls built at runtime are unknown findings (programs) or only counted (URLs); IPC and queues are not covered."
+    "Runtime links from call sites are read line by line, not parsed (ADR 0006): a child-process call (JS/TS spawn, execFile, fork, execa; Rust Command::new; Tauri sidecars) counts only when its program is a string literal or a same-file constant, and it is matched to a container by path or bin name. HTTP calls count only when their literal path matches the routes of exactly one other container. Calls built at runtime are unknown findings (programs) or only counted (URLs); IPC and queues are not covered.",
+    "Path references are repository paths to tracked files named in comments, string literals and docs, read line by line (ADR 0006). They are hints at pattern confidence, file to file, kept out of views and of affected; a reference that is also an import is left out. Paths built at runtime are not seen, and a mirrored-logic signal comes from the wording of the line, not from comparing code."
   ]
 }

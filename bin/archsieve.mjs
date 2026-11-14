@@ -31,6 +31,8 @@ match the unresolved imports (none when several match). Without it, such imports
 Units (skipped by --no-units) also read call sites: a child process started with a literal program (JS/TS spawn,
 execFile, fork, execa; Rust Command::new; Tauri sidecars), or an HTTP call whose literal path matches the routes of
 exactly one other container, becomes a runtime-link edge at pattern confidence; a program built at runtime is an unknown.
+Repository paths named in comments, strings and docs become references edges (file to file, pattern confidence, never
+in views or affected); mirror / same-rule wording across languages or containers is a mirrored-logic signal.
 
 Containers also get facts (not a score): files and lines per language, manifests with declared dependency counts,
 and toolchains with the file that implies each. render --view containers --format md shows them as a table; diff
