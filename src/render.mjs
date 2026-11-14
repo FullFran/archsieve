@@ -316,8 +316,14 @@ function containerLegend(p) {
   if (rel.has('package-dependency')) rows.push(['`package-dependency`', 'A package.json dependency on the other container']);
   if (edge((e) => e.state === 'declared-unverified')) rows.push(['Dashed arrow ending in `unverified`', 'Declared in the model, no static evidence in the code (runtime links such as HTTP or IPC are never visible statically)']);
   if (edge((e) => e.state === 'code-dependency-only')) rows.push(['Arrow ending in `code only, runtime unverified`', 'Declared as a runtime link (HTTP, IPC, child process, queue...); the code shows imports between the two containers, but nothing proves the runtime link itself']);
-  if (edge((e) => e.runtime)) rows.push(['`child-process (static pattern)`', 'A call site starts the other container as a child process (literal program or bin name, read by a line pattern: lower confidence than an import; dashed when nothing else backs the arrow)']);
-  if (edge((e) => e.state === 'evidenced')) rows.push(['Arrow ending in `evidenced (static pattern)`', 'Declared as a child-process link in the model, and a call site matches it']);
+  const runtime = new Set(p.edges.flatMap((e) => Object.keys(e.runtime ?? {})));
+  const RUNTIME_ROWS = {
+    'child-process': 'A call site starts the other container as a child process (literal program or bin name)',
+    sidecar: 'A Tauri sidecar call names a binary the other container builds',
+    'http-route': 'A client call\'s literal path matches a route only the other container defines',
+  };
+  for (const r of Object.keys(RUNTIME_ROWS)) if (runtime.has(r)) rows.push([`\`${r} (static pattern)\``, `${RUNTIME_ROWS[r]}; read by a line pattern, lower confidence than an import, dashed when nothing else backs the arrow`]);
+  if (edge((e) => e.state === 'evidenced')) rows.push(['Arrow ending in `evidenced (static pattern)`', 'Declared as a runtime link (child process, sidecar, HTTP) in the model, and a call site of that kind matches it']);
   if (edge((e) => e.state === 'undeclared')) rows.push(['Arrow ending in `not in model`', 'Found in the code, not declared in the model']);
   return rows;
 }

@@ -99,8 +99,15 @@ export function applyModel(root, units, model, evFile) {
 // such as HTTP, IPC, stdio, a child process or a queue, or a technology not recognised here) needs
 // evidence of its own. Relation metadata `link 'code'` or `link 'runtime'` overrides the mapping.
 const CODE_TECHNOLOGY = /^\s*(imports?|library|lib|npm( package)?|package( dependency)?|module|crate|go module|code( dependency)?|in-process|function calls?|source)\s*$/i;
-// The runtime technologies a static child-process pattern can evidence (ADR 0006).
+// Which declared runtime technologies each static pattern relation can evidence (ADR 0006): a child
+// process does not prove an HTTP link, and a matching route does not prove a child process.
 const CHILD_PROCESS_TECHNOLOGY = /child[ _-]?process|subprocess|\bspawn|\bexec\b|stdio|sidecar|\bcli\b|command line/i;
+const PATTERN_EVIDENCES = {
+  'child-process': CHILD_PROCESS_TECHNOLOGY,
+  sidecar: CHILD_PROCESS_TECHNOLOGY,
+  'http-route': /\bhttps?\b|\brest\b|\bjson\b|\bapi\b/i,
+};
+const evidences = (pattern, d) => Object.keys(pattern.relations ?? {}).some((r) => PATTERN_EVIDENCES[r]?.test(d.technology ?? ''));
 export const linkKind = (d) => d.link ?? (!d.technology || CODE_TECHNOLOGY.test(d.technology) ? 'code' : 'runtime');
 
 // After linking: every declared link is confirmed by an observed depends-on edge or stays
@@ -114,9 +121,9 @@ export function crossCheckLinks(snapshot, declaredLinks) {
   for (const l of declaredLinks) {
     const e = observed.get(`${l.source}\u0000${l.target}`);
     const pattern = runtimeEv.get(`${l.source}\u0000${l.target}`);
-    // A declared child-process link with a matching call site is evidenced: pattern confidence,
+    // A declared runtime link with a matching call site is evidenced: pattern confidence,
     // not proof, so it has its own state instead of confirmed.
-    if (pattern && l.declared.some((d) => linkKind(d) === 'runtime' && CHILD_PROCESS_TECHNOLOGY.test(d.technology ?? ''))) {
+    if (pattern && l.declared.some((d) => linkKind(d) === 'runtime' && evidences(pattern, d))) {
       if (e) Object.assign(e, { declared: l.declared, status: 'evidenced', evidence: sortEvidence([...e.evidence, ...l.evidence]) });
       else snapshot.edges.push({ source: l.source, target: l.target, kind: 'depends-on', declared: l.declared, status: 'evidenced', evidence: l.evidence });
       continue;
