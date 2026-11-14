@@ -5,9 +5,11 @@ const load = (f) => JSON.parse(readFileSync(new URL(`../schema/${f}`, import.met
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 ajv.addSchema(load('snapshot.schema.json'));
 ajv.addSchema(load('diff.schema.json'));
+ajv.addSchema(load('affected.schema.json'));
+const SCHEMA = { 'archsieve-diff': 'diff', 'archsieve-affected': 'affected' };
 
 export function validate(doc) {
-  const id = doc?.kind === 'archsieve-diff' ? 'https://github.com/FullFran/archsieve/schema/diff-0.1.json' : 'https://github.com/FullFran/archsieve/schema/snapshot-0.1.json';
+  const id = `https://github.com/FullFran/archsieve/schema/${SCHEMA[doc?.kind] ?? 'snapshot'}-0.1.json`;
   const v = ajv.getSchema(id);
   return v(doc) ? [] : v.errors.map((e) => `${e.instancePath || '/'} ${e.message}`);
 }

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/FullFran/archsieve/schema/affected-0.1.json",
+  "title": "ArchSieve affected 0.3",
+  "description": "Reverse import closure of a set of changed files, the tests inside it, and every known reason it may be incomplete.",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "subject", "changed", "ignored", "files", "tests", "blind", "limitations"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "enum": ["0.3"] },
+    "kind": { "const": "archsieve-affected" },
+    "subject": { "$ref": "snapshot-0.1.json#/$defs/subject" },
+    "base": { "type": "string", "description": "The git ref the changed files were read from (git diff --name-only)." },
+    "changed": { "type": "array", "items": { "type": "string" }, "description": "Changed paths, relative to the scanned directory." },
+    "ignored": { "type": "array", "items": { "type": "string" }, "description": "Changed paths dropped by --ignore." },
+    "files": { "type": "array", "items": { "type": "string" }, "description": "Snapshot node ids of the changed files and every file or Go package that imports them, directly or indirectly." },
+    "tests": { "type": "array", "items": { "type": "string" }, "description": "The part of files marked test in the snapshot." },
+    "blind": {
+      "type": "array",
+      "description": "Why files may be incomplete. Empty means nothing known is missing, not that the answer is proven complete (see limitations).",
+      "items": {
+        "type": "object", "required": ["reason"], "additionalProperties": false,
+        "properties": {
+          "reason": { "enum": ["not-in-graph", "outside-snapshot", "unresolved-import", "analysis-skipped", "no-test-marks", "stale-snapshot"] },
+          "file": { "type": "string" }, "detail": { "type": "string" }
+        }
+      }
+    },
+    "limitations": { "type": "array", "items": { "type": "string" } }
+  }
+}
