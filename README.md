@@ -47,7 +47,7 @@ node bin/archsieve.mjs render /tmp/as/now.json --depth 1 > /tmp/as/components.mm
 ```
 
 `npm link` puts `archsieve` on your PATH. To use it as a dev dependency of another project, pin a tag:
-`npm install --save-dev github:FullFran/archsieve#v0.1.0`.
+`npm install --save-dev https://github.com/FullFran/archsieve/archive/refs/tags/v0.1.1.tar.gz` (the tag tarball keeps an `integrity` hash in the lockfile; a `github:` spec is locked as `git+ssh`, which needs a GitHub SSH key to install).
 
 ## Example (synthetic NestJS fixture)
 
