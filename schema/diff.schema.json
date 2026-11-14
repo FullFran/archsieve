@@ -6,7 +6,7 @@
   "required": ["schemaVersion", "kind", "before", "after", "warnings", "summary", "components", "nodes", "edges", "findings"],
   "additionalProperties": false,
   "properties": {
-    "schemaVersion": { "enum": ["0.1", "0.2", "0.3"] },
+    "schemaVersion": { "enum": ["0.1", "0.2", "0.3", "0.4"] },
     "kind": { "const": "archsieve-diff" },
     "before": { "$ref": "snapshot-0.1.json#/$defs/subject" },
     "after": { "$ref": "snapshot-0.1.json#/$defs/subject" },

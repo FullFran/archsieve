@@ -11,14 +11,16 @@ import { readLikeC4 } from './adapters/likec4.mjs';
 import { applyModel, crossCheckLinks, modelEvidenceFile } from './model.mjs';
 import { markTests, DEFAULT_TEST_GLOBS } from './tests.mjs';
 import { tsConfigHints } from './adapters/tsconfig.mjs';
+import { readHistory, applyHistory, DEFAULT_SINCE, MAX_CHANGESET } from './adapters/history.mjs';
 
-export const SCHEMA_VERSION = '0.3';
+export const SCHEMA_VERSION = '0.4';
 
 const LIMITATIONS = {
   'dependency-cruiser': 'Static import graph only: no runtime calls, network/IPC/queue/event links, reflection or computed dynamic imports. Unresolvable imports are listed as unknown findings, not guessed.',
   'go list': 'Go package import graph only; standard library omitted; external packages collapsed to host/org/repo. Built with the current GOOS/GOARCH and no build tags, so tagged files may be missing. Rust/Tauri code is not analyzed in V0.',
   manifests: 'Units come from manifests read as data (package.json, Cargo targets via cargo metadata, go.mod and Go main packages, tauri.conf.json). Links between units at runtime (HTTP, IPC, child processes) are not visible statically.',
   model: 'The declared model is read as exported, never run. A declared-unverified link is not wrong, only unproven: runtime links (HTTP, IPC, child processes) have no static evidence.',
+  history: 'Change history (git log) is a heuristic: churn counts commits, and co-change between containers is a signal of hidden coupling, never proof of a link. Commits touching more than ' + MAX_CHANGESET + ' files are left out.',
   'nest': 'NestJS DI graph as registered by Nest in preview mode: providers are not instantiated, so factory/value providers and anything resolved via ModuleRef/request scope at runtime is not visible.',
 };
 
@@ -122,7 +124,7 @@ export function scanRef(target, ref, opts = {}) {
       const dst = join(tree, rel);
       if (existsSync(join(dst, '..')) && !existsSync(dst)) symlinkSync(join(repo, rel), dst);
     }
-    return scan(tree, { ...opts, subject: { name, commit, dirty: false } });
+    return scan(tree, { ...opts, subject: { name, commit, dirty: false }, historyFrom: { cwd: repo, commit } });
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
@@ -238,8 +240,19 @@ export function scan(target, opts = {}) {
   }
   if (declared) {
     for (const f of crossCheckLinks(snapshot, declared.links)) snapshot.findings.push({ id: findingId(f), ...f });
-    snapshot.findings.sort(byKey((f) => f.id));
   }
+  if (opts.history) {
+    const since = opts.since ?? DEFAULT_SINCE;
+    const from = opts.historyFrom ?? { cwd: root, commit: 'HEAD' };
+    const h = readHistory(from.cwd, { commit: from.commit, since });
+    if (h.skipped) snapshot.analyses.push({ tool: 'git log', scope: since, status: 'skipped', note: h.skipped });
+    else {
+      for (const f of applyHistory(snapshot, h, { coChangeMin: opts.coChangeMin })) snapshot.findings.push({ id: findingId(f), ...f });
+      snapshot.analyses.push({ tool: 'git log', scope: since, status: 'ok', note: `${h.commits.length} commits since ${h.since}${h.large ? `; ${h.large} commits touching more than ${MAX_CHANGESET} files left out` : ''}` });
+      snapshot.limitations.push(LIMITATIONS.history);
+    }
+  }
+  snapshot.findings.sort(byKey((f) => f.id));
   snapshot.edges.sort(byKey(edgeKey));
   return snapshot;
 }

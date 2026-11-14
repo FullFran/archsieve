@@ -18,7 +18,7 @@ const testFiles = (snap) => snap.nodes.filter((n) => n.test).map((n) => n.id);
 
 test('S1 scan: files matching the default test globs are marked test, production files are not', (t) => {
   const { snap } = scanSplit(t);
-  assert.equal(snap.schemaVersion, '0.3');
+  assert.ok(Number(snap.schemaVersion) >= 0.3, 'schema 0.3 introduced the test mark');
   assert.deepEqual(testFiles(snap), ['app/src/util.spec.mjs', 'app/test/main.test.mjs']);
   const a = snap.analyses.find((x) => x.tool === 'test globs');
   assert.equal(a.status, 'ok');
