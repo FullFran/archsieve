@@ -29,8 +29,8 @@ reduce --depth; files and nest exit 2. 0 disables a budget.
 match the unresolved imports (none when several match). Without it, such imports get a ts-config-hint finding with the flag.
 
 Units (skipped by --no-units) also read call sites: a child process started with a literal program (JS/TS spawn,
-execFile, fork, execa; Rust Command::new; Tauri sidecars) becomes a runtime-link edge at pattern confidence; a
-program built at runtime is an unknown.
+execFile, fork, execa; Rust Command::new; Tauri sidecars), or an HTTP call whose literal path matches the routes of
+exactly one other container, becomes a runtime-link edge at pattern confidence; a program built at runtime is an unknown.
 
 --history reads git log (read only): churn per file, Go package and container over a window anchored at the scanned
 commit's date, and co-change-without-link signals for containers that change together with no static link.

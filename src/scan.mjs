@@ -21,7 +21,7 @@ const LIMITATIONS = {
   'go list': 'Go package import graph only; standard library omitted; external packages collapsed to host/org/repo. Built with the current GOOS/GOARCH and no build tags, so tagged files may be missing. Rust/Tauri code is not analyzed in V0.',
   manifests: 'Units come from manifests read as data (package.json, Cargo targets via cargo metadata, go.mod and Go main packages, tauri.conf.json). Links between units at runtime (HTTP, IPC, child processes) are not visible statically.',
   model: 'The declared model is read as exported, never run. A declared-unverified link is not wrong, only unproven: runtime links (HTTP, IPC, child processes) have no static evidence.',
-  patterns: 'Runtime links from call sites are read line by line, not parsed (ADR 0006): a child-process call (JS/TS spawn, execFile, fork, execa; Rust Command::new; Tauri sidecars) counts only when its program is a string literal or a same-file constant, and it is matched to a container by path or bin name. Calls built at runtime are unknown findings; HTTP, IPC and queues are not covered.',
+  patterns: 'Runtime links from call sites are read line by line, not parsed (ADR 0006): a child-process call (JS/TS spawn, execFile, fork, execa; Rust Command::new; Tauri sidecars) counts only when its program is a string literal or a same-file constant, and it is matched to a container by path or bin name. HTTP calls count only when their literal path matches the routes of exactly one other container. Calls built at runtime are unknown findings (programs) or only counted (URLs); IPC and queues are not covered.',
   history: 'Change history (git log) is a heuristic: churn counts commits, and co-change between containers is a signal of hidden coupling, never proof of a link. Commits touching more than ' + MAX_CHANGESET + ' files are left out.',
   'nest': 'NestJS DI graph as registered by Nest in preview mode: providers are not instantiated, so factory/value providers and anything resolved via ModuleRef/request scope at runtime is not visible.',
 };
@@ -75,14 +75,14 @@ function tsConfigFiles(root, exclude) {
   return [...new Set(files)].filter((f) => isTs(f.split('/').pop()) && !re.test(f) && !vendor.test(f)).sort();
 }
 
-// Production Rust sources for the runtime patterns: tracked plus untracked-but-not-ignored, so
+// Production Rust or Go sources for the runtime patterns: tracked plus untracked-but-not-ignored, so
 // target/ stays out; outside git, a bounded walk that skips target/.
-function rustFiles(root, exclude, paths, isTest) {
+function sourceFiles(root, exclude, paths, isTest, ext) {
   const re = new RegExp(exclude), vendor = new RegExp(VENDOR);
   const keep = (f) => !re.test(f) && !vendor.test(f) && !/(^|\/)target\//.test(f) && !isTest(f) && (!paths || paths.some((p) => f.startsWith(`${p.replace(/\/$/, '')}/`)));
-  const res = gitLsFiles(root, ['*.rs']);
-  const files = res ? res.stdout.split('\n').filter(Boolean) : findFiles(root, (n) => n.endsWith('.rs'), (r) => !re.test(`${r}/`) && !vendor.test(`${r}/`) && !r.endsWith('target'), '', 8);
-  return [...new Set(files)].filter((f) => f.endsWith('.rs') && keep(f)).sort();
+  const res = gitLsFiles(root, [`*${ext}`]);
+  const files = res ? res.stdout.split('\n').filter(Boolean) : findFiles(root, (n) => n.endsWith(ext), (r) => !re.test(`${r}/`) && !vendor.test(`${r}/`) && !r.endsWith('target'), '', 8);
+  return [...new Set(files)].filter((f) => f.endsWith(ext) && keep(f)).sort();
 }
 
 function findFiles(root, name, keep, rel = '', depth = 4) {
@@ -251,7 +251,8 @@ export function scan(target, opts = {}) {
     snapshot.edges.push(...linkUnits(root, snapshot));
   }
   if (opts.units !== false) {
-    const r = runtimeLinks(root, snapshot, { rustFiles: rustFiles(root, exclude, opts.paths, testMatcher(testGlobs)) });
+    const isTest = testMatcher(testGlobs);
+    const r = runtimeLinks(root, snapshot, { rustFiles: sourceFiles(root, exclude, opts.paths, isTest, '.rs'), goFiles: sourceFiles(root, exclude, opts.paths, isTest, '.go') });
     snapshot.edges.push(...r.edges);
     for (const f of r.findings) snapshot.findings.push({ id: findingId(f), ...f });
     snapshot.analyses.push(r.analysis);

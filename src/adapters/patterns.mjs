@@ -1,6 +1,9 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { byKey } from '../util.mjs';
+import { HTTP_GATE, serverRoutes, clientCall, routeMatch } from './routes.mjs';
+
+export { serverRoutes, clientPath, routeMatch } from './routes.mjs';
 
 // Static runtime-link evidence from call sites, read line by line (ADR 0006). This is not a parser:
 // it recognises child-process calls whose program is a string literal, or a const bound to one in
@@ -93,27 +96,51 @@ function resolver(root, units, names) {
 // Returns runtime-link edges (container -> container), unknown findings for unreadable call sites,
 // and the analyses entry. Reads production JS/TS files already in the snapshot and the Rust files
 // the scan lists (no Rust graph exists to take them from).
-export function runtimeLinks(root, snapshot, { rustFiles = [] } = {}) {
+export function runtimeLinks(root, snapshot, { rustFiles = [], goFiles = [] } = {}) {
   const units = snapshot.nodes.filter((n) => n.kind === 'container');
   const jsFiles = snapshot.nodes.filter((n) => n.kind === 'file' && !n.test && JS_FILE.test(n.id)).map((n) => n.id);
   const resolve = resolver(root, units, programNames(root, units));
   const deepest = [...units].sort(byKey((u) => String(1e6 - u.path.length).padStart(7, '0') + u.path));
   const links = new Map(), unresolved = new Map();
+  const addLink = (from, target, rel, evidence) => {
+    const k = `${from.id}\u0000${target.id}`;
+    if (!links.has(k)) links.set(k, { source: from.id, target: target.id, kind: 'runtime-link', relations: {}, confidence: 'pattern', evidence: [] });
+    const l = links.get(k);
+    l.relations[rel] = (l.relations[rel] ?? 0) + 1;
+    l.evidence.push(...evidence);
+  };
   let external = 0;
   const read = { js: 0, rust: 0 };
-  const sources = [...jsFiles.map((f) => [f, LANGS.js, 'js']), ...rustFiles.map((f) => [f, LANGS.rust, 'rust'])];
-  for (const [file, lang, name] of sources) {
+  const routes = [], calls = [];
+  const sources = [...jsFiles.map((f) => [f, 'js']), ...rustFiles.map((f) => [f, 'rust']), ...goFiles.map((f) => [f, 'go'])];
+  for (const [file, name] of sources) {
+    const lang = LANGS[name];
     let text;
     try { text = readFileSync(join(root, file), 'utf8'); } catch { continue; }
-    if (!lang.gate.test(text)) continue;
+    const processes = lang?.gate.test(text), http = HTTP_GATE[name].test(text);
+    if (!processes && !http) continue;
+    const from = deepest.find((u) => within(file, u.path));
+    const lines = text.split('\n');
+    const evOf = (i) => ({ tool: TOOL, file, line: i + 1, detail: lines[i].trim().slice(0, 160) });
+    const comment = (line) => /^\s*(\/\/|\*|#(?!\[))/.test(line);
+    if (http && from) {
+      const nestPrefix = name === 'js' ? /@Controller\s*\(\s*(?:(['"`])([^'"`]*)\1)?\s*\)/.exec(text)?.[2] ?? (/@Controller\b/.test(text) ? '' : undefined) : undefined;
+      lines.forEach((line, i) => {
+        if (comment(line)) return;
+        const defined = serverRoutes(name, line, { nestPrefix });
+        for (const path of defined) routes.push({ unit: from, path, ev: evOf(i) });
+        const call = defined.length ? undefined : clientCall(name, line);
+        if (call) calls.push({ unit: from, path: call.path, ev: evOf(i) });
+      });
+    }
+    if (!processes) continue;
     read[name]++;
     const consts = new Map([...text.matchAll(lang.consts)].map((m) => [m[1], m[3]]));
     const value = (expr) => lang.literal.exec(expr.trim())?.[2] ?? consts.get(expr.trim()) ?? null;
-    const from = deepest.find((u) => within(file, u.path));
-    text.split('\n').forEach((line, i) => {
+    lines.forEach((line, i) => {
       const m = lang.call.exec(line);
-      if (!m || /^\s*(\/\/|\*)/.test(line)) return;
-      const ev = { tool: TOOL, file, line: i + 1, detail: line.trim().slice(0, 160) };
+      if (!m || comment(line)) return;
+      const ev = evOf(i);
       const program = value(m[2]);
       if (program === null) {
         if (!unresolved.has(file)) unresolved.set(file, []);
@@ -124,19 +151,28 @@ export function runtimeLinks(root, snapshot, { rustFiles = [] } = {}) {
       const target = [program, ...args].map((c) => resolve(c, file)).find(Boolean);
       if (!target) { external++; return; }
       if (!from || target === from) return;
-      const k = `${from.id}\u0000${target.id}`;
-      if (!links.has(k)) links.set(k, { source: from.id, target: target.id, kind: 'runtime-link', relations: {}, confidence: 'pattern', evidence: [] });
-      const l = links.get(k), rel = lang.relation(m[1]);
-      l.relations[rel] = (l.relations[rel] ?? 0) + 1;
-      l.evidence.push(ev);
+      addLink(from, target, lang.relation(m[1]), [ev]);
     });
   }
+  // A client call is a link only when its path matches routes of exactly one other container.
+  const http = { matched: 0, ambiguous: 0, noRoute: 0, noLiteral: 0 };
+  for (const c of calls) {
+    if (c.path === null) { http.noLiteral++; continue; }
+    const hits = routes.filter((r) => routeMatch(r.path, c.path));
+    const targets = [...new Set(hits.map((r) => r.unit))];
+    if (!targets.length) http.noRoute++;
+    else if (targets.includes(c.unit)) continue;
+    else if (targets.length > 1) http.ambiguous++;
+    else {
+      http.matched++;
+      addLink(c.unit, targets[0], 'http-route', [c.ev, hits[0].ev]);
+    }
+  }
   const sorted = (o) => Object.fromEntries(Object.entries(o).sort(([a], [b]) => (a < b ? -1 : 1)));
-  const edges = [...links.values()].map((l) => ({
-    ...l,
-    relations: sorted(l.relations),
-    evidence: l.evidence.length > MAX_EVIDENCE ? [...l.evidence.slice(0, MAX_EVIDENCE), { tool: TOOL, detail: `${l.evidence.length - MAX_EVIDENCE} more` }] : l.evidence,
-  }));
+  const edges = [...links.values()].map((l) => {
+    const ev = [...new Map(l.evidence.map((x) => [`${x.file}:${x.line}`, x])).values()].sort(byKey((x) => `${x.file}\u0000${String(x.line).padStart(9, '0')}`));
+    return { ...l, relations: sorted(l.relations), evidence: ev.length > MAX_EVIDENCE ? [...ev.slice(0, MAX_EVIDENCE), { tool: TOOL, detail: `${ev.length - MAX_EVIDENCE} more` }] : ev };
+  });
   const findings = [...unresolved].map(([file, ev]) => ({
     level: 'unknown', rule: 'runtime-call-unresolved', subjects: [file],
     message: `${ev.length === 1 ? 'A child-process call' : `${ev.length} child-process calls`} in ${file} run${ev.length === 1 ? 's' : ''} a program that is not a literal or a same-file constant: the runtime link, if any, is not visible statically.`,
@@ -144,6 +180,11 @@ export function runtimeLinks(root, snapshot, { rustFiles = [] } = {}) {
   }));
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
   const nUnresolved = [...unresolved.values()].reduce((s, e) => s + e.length, 0);
-  const analysis = { tool: TOOL, scope: 'child-process and sidecar calls', status: 'ok', note: `${plural(edges.length, 'runtime link', 'runtime links')}, ${plural(external, 'call site', 'call sites')} to programs outside the repository, ${nUnresolved} unresolved; read ${read.js} of ${jsFiles.length} production JS/TS files and ${read.rust} of ${plural(rustFiles.length, 'Rust file', 'Rust files')} that name a child-process API` };
+  const routeUnits = new Set(routes.map((r) => r.unit)).size;
+  const analysis = {
+    tool: TOOL, scope: 'child-process, sidecar and HTTP calls', status: 'ok',
+    note: `${plural(edges.length, 'runtime link', 'runtime links')}, ${plural(external, 'call site', 'call sites')} to programs outside the repository, ${nUnresolved} unresolved; read ${read.js} of ${jsFiles.length} production JS/TS files and ${read.rust} of ${plural(rustFiles.length, 'Rust file', 'Rust files')} that name a child-process API`
+      + `; HTTP: ${plural(routes.length, 'route', 'routes')} in ${plural(routeUnits, 'container', 'containers')}; ${plural(http.matched, 'call', 'calls')} matched, ${http.ambiguous} ambiguous, ${http.noRoute} matched no route, ${http.noLiteral} without a literal path`,
+  };
   return { edges, findings, analysis };
 }

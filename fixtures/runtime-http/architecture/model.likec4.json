@@ -1,0 +1,11 @@
+{
+  "elements": {
+    "web": { "id": "web", "title": "Web", "metadata": { "path": "web" } },
+    "api": { "id": "api", "title": "API", "metadata": { "path": "api" } },
+    "svc": { "id": "svc", "title": "Reports", "metadata": { "path": "svc" } }
+  },
+  "relations": {
+    "r1": { "id": "r1", "source": { "model": "web" }, "target": { "model": "api" }, "title": "reads users", "technology": "HTTPS/JSON" },
+    "r2": { "id": "r2", "source": { "model": "web" }, "target": { "model": "svc" }, "title": "reads reports", "technology": "child process" }
+  }
+}
