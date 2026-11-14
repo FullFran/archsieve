@@ -7,7 +7,7 @@
   "required": ["schemaVersion", "kind", "subject", "tools", "analyses", "nodes", "edges", "findings", "limitations"],
   "additionalProperties": false,
   "properties": {
-    "schemaVersion": { "enum": ["0.1", "0.2", "0.3", "0.4", "0.5"] },
+    "schemaVersion": { "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6"] },
     "kind": { "const": "archsieve-snapshot" },
     "subject": { "$ref": "#/$defs/subject" },
     "tools": { "type": "array", "items": { "type": "object", "required": ["name", "version"], "properties": { "name": { "type": "string" }, "version": { "type": "string" } }, "additionalProperties": false } },
@@ -15,6 +15,21 @@
     "nodes": { "type": "array", "items": { "$ref": "#/$defs/node" } },
     "edges": { "type": "array", "items": { "$ref": "#/$defs/edge" } },
     "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "suppressed": {
+      "type": "array",
+      "description": "Candidates a heuristic signal left out, with the reason (schema 0.6). test-only-module: files that only tests import but that something runs by path (manifest entry, --entry-globs, package.json script, Dockerfile, systemd unit, Procfile, shell script, workflow run step, spawn by path) or that such a file imports.",
+      "items": {
+        "type": "object",
+        "required": ["rule", "subject", "reason", "evidence"],
+        "additionalProperties": false,
+        "properties": {
+          "rule": { "type": "string" },
+          "subject": { "type": "string" },
+          "reason": { "type": "string" },
+          "evidence": { "$ref": "#/$defs/evidence" }
+        }
+      }
+    },
     "limitations": { "type": "array", "items": { "type": "string" } }
   },
   "$defs": {

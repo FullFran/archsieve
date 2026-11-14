@@ -43,8 +43,10 @@ commit's date, and co-change-without-link signals for containers that change tog
 
 Tests: scan marks files matching --test-globs (default: ${DEFAULT_TEST_GLOBS.join(', ')}) as test; labels show
 the test share, e.g. "imports x152 (test x148)". --no-tests (render, diff) leaves imports from test files out.
-A production file that only tests (or other such files) import, and that no package.json main/module/browser/bin/
-exports or --entry-globs names as an entry point, is a test-only-module signal, one per retired folder.
+A production file that only tests (or other such files) import, and that nothing runs by path, is a test-only-module
+signal, one per retired folder. Entry points: package.json main/module/browser/bin/exports, --entry-globs, node-like
+commands in package.json scripts, Dockerfiles, systemd units, Procfiles, .sh/.ps1 scripts and workflow run: steps,
+and files spawned by path; the snapshot's suppressed array says which candidate each one kept out, and why.
 
 affected: JSON with the files that import the changed ones directly or indirectly (reverse closure, changed files
 included), the test files among them, and "blind": every reason the answer may be incomplete (changed files not in
