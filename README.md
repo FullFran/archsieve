@@ -88,6 +88,7 @@ Boxes are blue for code, yellow for npm packages and purple for Nest modules. In
 ## Known limitations
 
 - Static evidence only: no runtime calls, HTTP, IPC, queues or events. A clean result does not mean the system is correct.
+- Path aliases (`@/...`) need the tsconfig that defines them. When unresolved imports match `compilerOptions.paths` in a tracked `tsconfig*.json`, scan adds a `ts-config-hint` signal naming the exact `--ts-config <file>` flag; `--ts-config auto` uses that tsconfig when exactly one matches (and says so in `analyses`). tsconfig files are read as data, never executed. One tsconfig applies to the whole scan.
 - dependency-cruiser cannot see computed `import(\`./x/${name}\`)`; such imports are neither edges nor findings.
 - `--ref` resolves packages against the **current** `node_modules`, not the install at that commit.
 - Rust, Python and PowerShell are not analyzed. JSON Schema `$ref` graphs (relevant for HCS) are not analyzed yet.

@@ -107,3 +107,15 @@ test('S2 affected --base: reads git diff --name-only and flags a snapshot from a
   assert.equal(cli(['affected', fresh, '--base', 'no-such-ref', '--repo', repo]).code, 2);
   assert.equal(cli(['affected', fresh]).code, 2, '--changed or --base is required');
 });
+
+test('S2 affected: every unresolved specifier of a file is checked, not only the first one', (t) => {
+  const repo = scratch(t);
+  writeFileSync(join(repo, 'main.mjs'), "import './gen/aaa.mjs';\nimport './gen/zzz.mjs';\nimport './util.mjs';\n");
+  writeFileSync(join(repo, 'util.mjs'), 'export const u = 1;\n');
+  const snap = scanTo(t, repo, ['--go', 'none']);
+  const d = affected(snap, ['--changed', 'gen/zzz.mjs']);
+  assert.deepEqual(d.blind, [
+    { reason: 'not-in-graph', file: 'gen/zzz.mjs' },
+    { reason: 'unresolved-import', file: 'main.mjs', detail: './gen/zzz.mjs' },
+  ]);
+});

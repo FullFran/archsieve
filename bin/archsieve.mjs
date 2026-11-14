@@ -25,6 +25,9 @@ render: --format md adds title, concern, scope line and legend. --within zooms i
 dashed boundary boxes); --focus shows one element with its direct dependencies and dependents. Over budget, components
 reduce --depth; files and nest exit 2. 0 disables a budget.
 
+--ts-config <file> resolves tsconfig path aliases; --ts-config auto picks the only tsconfig*.json whose compilerOptions.paths
+match the unresolved imports (none when several match). Without it, such imports get a ts-config-hint finding with the flag.
+
 Tests: scan marks files matching --test-globs (default: ${DEFAULT_TEST_GLOBS.join(', ')}) as test; labels show
 the test share, e.g. "imports x152 (test x148)". --no-tests (render, diff) leaves imports from test files out.
 

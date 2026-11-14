@@ -63,7 +63,7 @@ const npmName = (resolved, module) => {
 };
 
 export function normalize(result) {
-  const nodes = new Map(), edges = [], findings = [];
+  const nodes = new Map(), edges = [], findings = [], unresolved = new Map();
   const tool = 'dependency-cruiser';
   for (const mod of result.modules) {
     // Unresolved specifiers also appear as pseudo-modules: they are reported as unknown findings, not nodes.
@@ -76,11 +76,10 @@ export function normalize(result) {
       const types = d.dependencyTypes ?? [];
       let target;
       if (d.couldNotResolve) {
-        findings.push({
-          level: 'unknown', rule: 'unresolved-import', subjects: [mod.source],
-          message: `Import "${d.module}" could not be resolved statically (alias, generated file, missing dependency or dynamic path).`,
-          evidence: [{ tool, file: mod.source, detail: d.module }],
-        });
+        // One finding per file (finding ids are rule + subjects), one evidence entry per specifier.
+        let f = unresolved.get(mod.source);
+        if (!f) unresolved.set(mod.source, f = { level: 'unknown', rule: 'unresolved-import', subjects: [mod.source], evidence: [] });
+        f.evidence.push({ tool, file: mod.source, detail: d.module });
         continue;
       } else if (types.some((t) => t.startsWith('npm')) || /node_modules\//.test(d.resolved)) {
         target = `npm:${npmName(d.resolved, d.module)}`;
@@ -95,6 +94,12 @@ export function normalize(result) {
         evidence: [{ tool, file: mod.source, detail: d.module }],
       });
     }
+  }
+  for (const f of unresolved.values()) {
+    const specs = [...new Set(f.evidence.map((e) => e.detail))].sort();
+    f.evidence = specs.map((detail) => ({ tool, file: f.subjects[0], detail }));
+    f.message = `${specs.length > 1 ? `${specs.length} imports` : 'Import'} ${specs.map((x) => `"${x}"`).join(', ')} could not be resolved statically (alias, generated file, missing dependency or dynamic path).`;
+    findings.push(f);
   }
   // Cycles: dependency-cruiser reports one violation per edge in a cycle; collapse to one finding per cycle.
   const seen = new Set();
