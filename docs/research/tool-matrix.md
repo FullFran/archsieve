@@ -14,7 +14,7 @@ No project found combines: a deterministic import graph + framework DI graph, pr
 | `go list` (Go toolchain) | Go packages | Package import graph, offline with `GOPROXY=off` | BSD-3-Clause (Go) | Official | Build-tag dependent | **Core for Go** |
 | NestJS Doctor | NestJS lint | 52 rules, SARIF, HTML module graph | MIT | v1.0.0 (2026-07-27) | Rule scorer; telemetry on by default; no stable graph JSON | Complement later |
 | CodeGraphContext | Code graph + MCP | Symbol graph in a graph DB | MIT | v0.5.7 (2026-08-08), ~4.4k stars | Python + graph DB; no provenance split | Reference only |
-| Code Maat | Git history | Change coupling, hotspots | LICENSE not read (UNVERIFIED) | v1.0.4 (2023-02-20) | Temporal only; Clojure | Later signal source |
+| Code Maat | Git history | Change coupling, hotspots | LICENSE not read (UNVERIFIED) | v1.0.4 (2023-02-20) | Temporal only; Clojure | Method reused in `--history` (ADR 0005), tool not used |
 | Archprint | Rule inference | Infers rules from imports; emits ESLint/dependency-cruiser rules; MCP | MIT | v0.18.3 (2026-11-14), 8 stars | Very young; no DI graph or diff | **Watch / possible partner** |
 | Digital-Threads/atlas | NestJS graph + MCP | Routes, DI, queues, DB graph; `.atlas/graph.json` | MIT | 1 star, no releases | Own schema; no diff; maturity unproven | Evaluate before V1 |
 | GitNexus | Code graph + MCP | Symbol/call graph, agent setup | **PolyForm-Noncommercial-1.0.0** | v1.6.12, ~48.5k stars | Non-commercial license | **Do not build on it** |

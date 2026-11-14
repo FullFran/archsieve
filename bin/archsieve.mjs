@@ -12,7 +12,7 @@ const USAGE = `archsieve: architecture evidence for coding agents (V0, experimen
 
 Usage:
   archsieve scan <dir> [--ref <git-ref>] [-o snapshot.json] [--paths a,b] [--exclude <regex, added to defaults>] [--ts-config <file>]
-                       [--test-globs <glob,...>]
+                       [--test-globs <glob,...>] [--history [--since <N>d|<date> (default 90d)] [--co-change-min N (default 5)]]
                        [--no-js] [--no-units] [--model <likec4.json>] [--go auto|none|<dir,...>] [--nest-entry <compiled module.js> [--nest-export AppModule]]
   archsieve diff <before.json> <after.json> [--format json|md] [--depth N] [-o file] [--fail-on error|signal|none] [--no-tests]
   archsieve render <snapshot.json> [--view components|files|nest|containers] [--depth N] [--format mermaid|dot|md]
@@ -28,6 +28,9 @@ reduce --depth; files and nest exit 2. 0 disables a budget.
 --ts-config <file> resolves tsconfig path aliases; --ts-config auto picks the only tsconfig*.json whose compilerOptions.paths
 match the unresolved imports (none when several match). Without it, such imports get a ts-config-hint finding with the flag.
 
+--history reads git log (read only): churn per file, Go package and container over a window anchored at the scanned
+commit's date, and co-change-without-link signals for containers that change together with no static link.
+
 Tests: scan marks files matching --test-globs (default: ${DEFAULT_TEST_GLOBS.join(', ')}) as test; labels show
 the test share, e.g. "imports x152 (test x148)". --no-tests (render, diff) leaves imports from test files out.
 
@@ -42,6 +45,7 @@ Exit codes: 0 ok, 1 --fail-on threshold reached or invalid document, 2 usage or 
 const OPTIONS = {
   output: { type: 'string', short: 'o' }, ref: { type: 'string' },
   paths: { type: 'string' }, exclude: { type: 'string' }, 'ts-config': { type: 'string' },
+  history: { type: 'boolean' }, since: { type: 'string' }, 'co-change-min': { type: 'string' },
   'test-globs': { type: 'string' }, 'no-tests': { type: 'boolean' },
   changed: { type: 'string', multiple: true }, base: { type: 'string' }, repo: { type: 'string' }, ignore: { type: 'string' },
   'no-js': { type: 'boolean' }, 'no-units': { type: 'boolean' }, model: { type: 'string' }, go: { type: 'string' },
@@ -55,6 +59,7 @@ const OPTIONS = {
 const readJson = (f) => JSON.parse(readFileSync(f, 'utf8'));
 const out = (text, file) => (file ? writeFileSync(file, text) : process.stdout.write(text));
 const usageError = (msg) => { const e = new Error(msg); e.code = 'USAGE'; throw e; };
+const positive = (v, name) => { if (v === undefined) return undefined; const n = Number(v); if (!Number.isInteger(n) || n < 1) usageError(`--${name} must be a positive integer`); return n; };
 const oneOf = (v, allowed, name) => { if (v !== undefined && !allowed.includes(v)) usageError(`--${name} must be one of: ${allowed.join(', ')}`); return v; };
 
 function main(argv) {
@@ -66,6 +71,7 @@ function main(argv) {
       if (args.length !== 1) usageError('scan needs exactly one <dir>');
       const snap = (o.ref ? (d, x) => scanRef(d, o.ref, x) : scan)(args[0], {
         paths: o.paths?.split(','), exclude: o.exclude, tsConfig: o['ts-config'], js: !o['no-js'], units: !o['no-units'], model: o.model,
+        history: !!o.history, since: o.since, coChangeMin: positive(o['co-change-min'], 'co-change-min'),
         testGlobs: o['test-globs']?.split(',').map((g) => g.trim()).filter(Boolean), go: o.go ?? 'auto', nestEntry: o['nest-entry'], nestExport: o['nest-export'],
       });
       out(`${JSON.stringify(snap, null, 2)}\n`, o.output);
