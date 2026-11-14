@@ -50,7 +50,7 @@ node bin/archsieve.mjs affected /tmp/as/now.json --base origin/main --repo ../my
 ```
 
 `npm link` puts `archsieve` on your PATH. To use it as a dev dependency of another project, pin a tag:
-`npm install --save-dev https://github.com/FullFran/archsieve/archive/refs/tags/v0.2.0.tar.gz` (the tag tarball keeps an `integrity` hash in the lockfile; a `github:` spec is locked as `git+ssh`, which needs a GitHub SSH key to install).
+`npm install --save-dev https://github.com/FullFran/archsieve/archive/refs/tags/v0.3.0.tar.gz` (the tag tarball keeps an `integrity` hash in the lockfile; a `github:` spec is locked as `git+ssh`, which needs a GitHub SSH key to install).
 
 ## Example (synthetic NestJS fixture)
 
