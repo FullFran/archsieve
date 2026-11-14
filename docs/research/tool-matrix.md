@@ -37,6 +37,20 @@ No project found combines: a deterministic import graph + framework DI graph, pr
 - Packwerk retrospective: dependency checks plus todo baselines worked; privacy checks were dropped; stale todos were never cleaned; zero violations does not mean the code runs, because static analysis misses dependencies. Hence the verified / heuristic / unknown split, and reuse of dependency-cruiser's own baseline for ratcheting.
 - Name check: no GitHub repository or npm package named `archsieve` or `arch-sieve` as of 2026-11-14. Domains, trademarks and other registries were not checked.
 
+## Container level (C4 level 2), researched 2026-11-14
+
+| Tool | What it does | What it does not do |
+|---|---|---|
+| Structurizr DSL | Hand-written model with containers, relations and technology; exports Mermaid, PlantUML and JSON | Does not read the code; the CLI repository is archived |
+| LikeC4 (MIT, 1.60.0 checked) | Hand-written `.c4` model with C4 vocabulary, deployment nodes and element `metadata`; `likec4 export json` is byte-identical across runs | Does not read the code; about 126 MB installed |
+| C4-PlantUML (MIT) | PlantUML macros for C4 diagrams | Not a queryable model |
+| Backstage `catalog-info.yaml` | Declared components and APIs with `dependsOn`, `providesApis`, `consumesApis` | No protocol field, not C4, no code check |
+| Nx, Turborepo | Package graph inferred from workspaces and imports | Packages are not deployables |
+| `cargo metadata --no-deps` | Lists Rust bin and lib targets per manifest | Only Rust |
+| ArchUnit `adhereToPlantUmlDiagram` | Fails when Java code uses a dependency the diagram forbids | Java only; does not report declared links without evidence |
+
+Among the tools reviewed, none compares a declared container model with observed evidence in both directions. Tauri requires `invoke('name')` to equal the `#[tauri::command]` function name, so matching literal names is a sound static link. Decision: ADR 0004.
+
 ## Sources
 
-dependency-cruiser (github.com/sverweij/dependency-cruiser), nestjs/nest (`packages/core/inspector`, `nest-application-context-options.interface.ts`), docs.nestjs.com/devtools/overview, RoloBits/nestjs-doctor, CodeGraphContext/CodeGraphContext, adamtornhill/code-maat, Tommkruix/archprint, Digital-Threads/atlas, abhigyanpatwari/GitNexus (LICENSE), nrwl/nx, pahen/madge, LukasNiessen/ArchUnitTS, nielspeter/ts-archunit, javierbrea/eslint-plugin-boundaries, Shopify/packwerk, shopify.engineering/a-packwerk-retrospective, Coratch/ArchProof, songshusyu/archproof, mermaid-js/mermaid, terrastruct/d2, structurizr/structurizr, json-schema.org/specification, agentskills.io/specification.
+dependency-cruiser (github.com/sverweij/dependency-cruiser), nestjs/nest (`packages/core/inspector`, `nest-application-context-options.interface.ts`), docs.nestjs.com/devtools/overview, RoloBits/nestjs-doctor, CodeGraphContext/CodeGraphContext, adamtornhill/code-maat, Tommkruix/archprint, Digital-Threads/atlas, abhigyanpatwari/GitNexus (LICENSE), nrwl/nx, pahen/madge, LukasNiessen/ArchUnitTS, nielspeter/ts-archunit, javierbrea/eslint-plugin-boundaries, Shopify/packwerk, shopify.engineering/a-packwerk-retrospective, Coratch/ArchProof, songshusyu/archproof, mermaid-js/mermaid, terrastruct/d2, structurizr/structurizr, json-schema.org/specification, agentskills.io/specification, docs.structurizr.com, likec4.dev/tooling/cli, github.com/likec4/likec4, github.com/plantuml-stdlib/C4-PlantUML, backstage.io/docs/features/software-catalog/descriptor-format, nx.dev/docs/features/explore-graph, turborepo.dev/docs/reference/query, doc.rust-lang.org/cargo/commands/cargo-metadata.html, archunit.org/userguide, v2.tauri.app/develop/calling-rust.
