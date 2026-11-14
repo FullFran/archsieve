@@ -1,9 +1,11 @@
-# ArchSieve snapshot model (0.1)
+# ArchSieve snapshot model (0.3)
 
 - `subject`: repo name, commit (`null` outside git), `dirty` (uncommitted changes in scope).
 - `tools` / `analyses`: exact tool versions, what ran, what was skipped and why.
 - `nodes[].kind`: `file`, `vendored-file` (boundary, not followed), `external-package`, `go-package`, `nest-module`, `nest-provider`, `nest-controller`.
+- `nodes[].test`: `true` when the path matches a test glob (globs recorded in `analyses`, tool `test globs`); absent means production. A path convention, not proof.
 - `edges[].kind`: `imports` (static; `typeOnly: true` when erased at runtime), `nest-imports`, `nest-injects`.
+- `depends-on` edges: `relations` counts imports and package dependencies between units; `testRelations` is the part that comes from test files.
 - Every node and edge has `evidence[]`: which tool reported it and, when the tool reports one, the file and import specifier.
 - `findings[].level`:
   - `error`: verifiable from the evidence (runtime import cycle, DI cycle, Go cycle).

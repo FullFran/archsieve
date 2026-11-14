@@ -1,9 +1,9 @@
 {
-  "schemaVersion": "0.2",
+  "schemaVersion": "0.3",
   "kind": "archsieve-snapshot",
   "subject": {
     "name": "after",
-    "commit": "44d903a4912a57e3d2bfa3f5600ee71a2e2b7a1a",
+    "commit": "20079f2f1b099261c2867e14e6afb76ec625571e",
     "dirty": false
   },
   "tools": [
@@ -33,6 +33,12 @@
       "scope": "dist/app.module.js",
       "status": "ok",
       "note": "preview mode; module top-level code executed"
+    },
+    {
+      "tool": "test globs",
+      "scope": ".",
+      "status": "ok",
+      "note": "0 test files or packages; globs: **/test/**, **/tests/**, **/__tests__/**, **/*.test.*, **/*.spec.*, **/*_test.*"
     }
   ],
   "nodes": [

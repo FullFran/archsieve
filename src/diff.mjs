@@ -1,6 +1,7 @@
 import { edgeKey } from './util.mjs';
 import { SCHEMA_VERSION } from './scan.mjs';
 import { project } from './render.mjs';
+import { withoutTests } from './tests.mjs';
 
 const LEVELS = ['error', 'signal', 'unknown'];
 
@@ -11,11 +12,16 @@ function setDiff(before, after, key) {
 
 const countBy = (xs, f) => xs.reduce((m, x) => ((m[f(x)] = (m[f(x)] ?? 0) + 1), m), {});
 
-export function diff(before, after, { depth = 2 } = {}) {
+export function diff(before, after, { depth = 2, noTests = false } = {}) {
+  const warnings = [];
+  if (noTests) {
+    before = withoutTests(before).snapshot;
+    after = withoutTests(after).snapshot;
+    warnings.push('Imports from test files were left out (--no-tests); test globs are recorded in each snapshot\'s analyses.');
+  }
   const nodes = setDiff(before.nodes, after.nodes, (n) => n.id);
   const edges = setDiff(before.edges, after.edges, edgeKey);
   const f = setDiff(before.findings, after.findings, (x) => x.id);
-  const warnings = [];
   const tv = (s) => JSON.stringify(s.tools);
   if (tv(before) !== tv(after)) warnings.push('Tool sets or versions differ between snapshots; some changes may come from the tools, not the code.');
   if (after.subject.dirty) warnings.push('The "after" snapshot was taken from a working tree with uncommitted changes.');
@@ -27,13 +33,14 @@ export function diff(before, after, { depth = 2 } = {}) {
   const pb = project(before, { view: 'components', depth }), pa = project(after, { view: 'components', depth });
   const cn = setDiff(pb.nodes, pa.nodes, (n) => n.id);
   const ce = setDiff(pb.edges, pa.edges, (e) => `${e.source}\u0000${e.target}`);
+  const dep = (e) => {
+    const tests = Object.values(e.testRelations ?? {}).reduce((a, b) => a + b, 0);
+    return { from: e.source.slice(4), to: e.target.slice(4), fileEdges: e.count, ...(tests ? { testEdges: tests } : {}) };
+  };
   const components = {
     depth,
     added: cn.added.map((n) => n.label), removed: cn.removed.map((n) => n.label),
-    dependencies: {
-      added: ce.added.map((e) => ({ from: e.source.slice(4), to: e.target.slice(4), fileEdges: e.count })),
-      removed: ce.removed.map((e) => ({ from: e.source.slice(4), to: e.target.slice(4), fileEdges: e.count })),
-    },
+    dependencies: { added: ce.added.map(dep), removed: ce.removed.map(dep) },
   };
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -76,7 +83,7 @@ export function toMarkdown(d) {
   if (!c.added.length && !c.removed.length && !c.dependencies.added.length && !c.dependencies.removed.length) L.push('No component-level change.');
   for (const x of c.added) L.push(`- new component \`${x}\``);
   for (const x of c.removed) L.push(`- removed component \`${x}\``);
-  for (const x of c.dependencies.added) L.push(`- NEW dependency \`${x.from}\` -> \`${x.to}\` (${x.fileEdges} file import(s))`);
+  for (const x of c.dependencies.added) L.push(`- NEW dependency \`${x.from}\` -> \`${x.to}\` (${x.fileEdges} file import(s)${x.testEdges ? `, ${x.testEdges} from tests` : ''})`);
   for (const x of c.dependencies.removed) L.push(`- removed dependency \`${x.from}\` -> \`${x.to}\``);
   L.push('', '## New findings');
   sec('Errors: verifiable regressions', 'error', d.findings.new);

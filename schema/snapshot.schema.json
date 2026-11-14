@@ -7,7 +7,7 @@
   "required": ["schemaVersion", "kind", "subject", "tools", "analyses", "nodes", "edges", "findings", "limitations"],
   "additionalProperties": false,
   "properties": {
-    "schemaVersion": { "enum": ["0.1", "0.2"] },
+    "schemaVersion": { "enum": ["0.1", "0.2", "0.3"] },
     "kind": { "const": "archsieve-snapshot" },
     "subject": { "$ref": "#/$defs/subject" },
     "tools": { "type": "array", "items": { "type": "object", "required": ["name", "version"], "properties": { "name": { "type": "string" }, "version": { "type": "string" } }, "additionalProperties": false } },
@@ -42,6 +42,7 @@
         "declared": { "$ref": "#/$defs/declaredElement" }, "status": { "$ref": "#/$defs/crossCheck" },
         "file": { "type": "string" }, "module": { "type": "string" }, "token": { "type": "string" },
         "exported": { "type": "boolean" }, "scope": { "type": "integer" },
+        "test": { "const": true, "description": "The path matches a test glob (recorded in analyses, tool 'test globs'). Absent means production." },
         "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } }
       },
       "additionalProperties": false
@@ -52,6 +53,7 @@
         "source": { "type": "string" }, "target": { "type": "string" },
         "kind": { "enum": ["imports", "nest-imports", "nest-injects", "depends-on"] },
         "relations": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 1 } },
+        "testRelations": { "type": "object", "description": "The part of relations whose source is a test file.", "additionalProperties": { "type": "integer", "minimum": 1 } },
         "declared": { "type": "array", "items": { "type": "object", "properties": { "title": { "type": "string" }, "technology": { "type": "string" } }, "additionalProperties": false } },
         "status": { "$ref": "#/$defs/crossCheck" },
         "typeOnly": { "const": true }, "dynamic": { "const": true },

@@ -20,6 +20,7 @@ repo or commit ──► existing analyzers ──► snapshot.json ──► di
 - **diff**: compares two snapshots: nodes, edges, component-level dependencies and findings that are new or resolved. `--fail-on error` turns it into a CI gate.
 - **render**: Mermaid, DOT or Markdown views (containers, components, files, NestJS DI), optionally coloured against a previous snapshot. Each diagram has a title, keeps to a budget of boxes and arrows (`--max-nodes`, `--max-edges`), and can zoom into a folder (`--within`) or one element (`--focus`). `--format md` adds the concern, what is shown out of what, and a legend.
 - **validate**: checks documents against the JSON Schemas in `schema/`.
+- **tests vs production**: scan marks files matching test globs (`--test-globs`, default `**/test/**`, `**/tests/**`, `**/__tests__/**`, `**/*.test.*`, `**/*.spec.*`, `**/*_test.*`) with `test: true`. Container and component arrows show the test share (`imports x152 (test x148)`), and `render --no-tests` / `diff --no-tests` leave imports from test files out, so a production coupling change is not buried under test helpers. The mark is a path convention, not proof.
 
 Findings have three levels and nothing else:
 

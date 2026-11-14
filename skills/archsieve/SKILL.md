@@ -29,6 +29,7 @@ Use before designing or reviewing a structural change (new module, service, inte
 | Compare your uncommitted work with HEAD | `scan <repo> --ref HEAD -o before.json`, `scan <repo> -o after.json`, `diff before.json after.json --format md` |
 | Compare two commits / branches | `scan <repo> --ref <a>` and `--ref <b>`, then `diff` |
 | Gate in CI | `diff base.json head.json --fail-on error` (exit 1 on new verifiable regressions) |
+| Coupling buried under test helpers (`imports x152 (test x148)`) | `render ... --no-tests` or `diff ... --no-tests`; custom test layout: `scan --test-globs '<glob>,...'` |
 | NestJS DI wiring (trusted code, compiled) | add `--nest-entry dist/app.module.js`; view with `render --view nest` |
 
 ## Execution Steps

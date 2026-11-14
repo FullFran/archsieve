@@ -6,7 +6,7 @@
   "required": ["schemaVersion", "kind", "before", "after", "warnings", "summary", "components", "nodes", "edges", "findings"],
   "additionalProperties": false,
   "properties": {
-    "schemaVersion": { "enum": ["0.1", "0.2"] },
+    "schemaVersion": { "enum": ["0.1", "0.2", "0.3"] },
     "kind": { "const": "archsieve-diff" },
     "before": { "$ref": "snapshot-0.1.json#/$defs/subject" },
     "after": { "$ref": "snapshot-0.1.json#/$defs/subject" },
@@ -42,7 +42,7 @@
   "$defs": {
     "count": { "type": "object", "required": ["before", "after"], "additionalProperties": false, "properties": { "before": { "type": "integer" }, "after": { "type": "integer" } } },
     "levels": { "type": "object", "required": ["error", "signal", "unknown"], "additionalProperties": false, "properties": { "error": { "type": "integer" }, "signal": { "type": "integer" }, "unknown": { "type": "integer" } } },
-    "componentEdge": { "type": "object", "required": ["from", "to", "fileEdges"], "additionalProperties": false, "properties": { "from": { "type": "string" }, "to": { "type": "string" }, "fileEdges": { "type": "integer" } } },
+    "componentEdge": { "type": "object", "required": ["from", "to", "fileEdges"], "additionalProperties": false, "properties": { "from": { "type": "string" }, "to": { "type": "string" }, "fileEdges": { "type": "integer" }, "testEdges": { "type": "integer", "minimum": 1 } } },
     "addedRemoved": { "type": "object", "required": ["added", "removed"], "properties": { "added": { "type": "array" }, "removed": { "type": "array" } } }
   }
 }
