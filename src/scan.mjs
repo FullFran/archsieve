@@ -285,15 +285,23 @@ export function scan(target, opts = {}) {
     snapshot.analyses.push(pr.analysis);
     snapshot.limitations.push(LIMITATIONS.references);
   }
+  const entries = entryPoints(root, files, { snapshot, spawned, entryGlobs: opts.entryGlobs ?? [] });
+  const suppressed = [];
+  // An entry point that imports nothing and that nothing imports is run, not dead (#22).
+  snapshot.findings = snapshot.findings.filter((f) => {
+    if (f.rule !== 'no-orphans' || !entries.has(f.subjects[0])) return true;
+    suppressed.push({ rule: 'no-orphans', subject: f.subjects[0], ...entries.get(f.subjects[0]) });
+    return false;
+  });
   if (!snapshot.edges.some((e) => e.kind === 'imports') || !marked) {
     snapshot.analyses.push({ tool: 'test-only modules', scope: (opts.paths ?? ['.']).join(','), status: 'skipped', note: marked ? 'no file import graph' : 'no test files matched the test globs' });
   } else {
-    const entries = entryPoints(root, files, { snapshot, spawned, entryGlobs: opts.entryGlobs ?? [] });
     const to = testOnlyModules(root, snapshot, { entries });
-    if (to.suppressed.length) snapshot.suppressed = to.suppressed;
+    suppressed.push(...to.suppressed);
     for (const f of to.findings) snapshot.findings.push({ id: findingId(f), ...f });
     snapshot.analyses.push({ tool: 'test-only modules', scope: (opts.paths ?? ['.']).join(','), status: 'ok', note: `${to.files} files in ${to.findings.length} groups; ${entries.size} entry points (manifests, scripts, commands, spawns)${to.suppressed.length ? `; ${to.suppressed.length} suppressed, see suppressed` : ''}${opts.entryGlobs?.length ? `; entry globs: ${opts.entryGlobs.join(', ')}` : ''}` });
   }
+  if (suppressed.length) snapshot.suppressed = suppressed.sort(byKey((x) => `${x.rule}\u0000${x.subject}`));
   if (declared) {
     for (const f of crossCheckLinks(snapshot, declared.links)) snapshot.findings.push({ id: findingId(f), ...f });
   }

@@ -81,10 +81,26 @@ export function testOnlyModules(root, snapshot, { entries = new Map() } = {}) {
     const tests = new Set(ev.map((x) => x.file)).size;
     const size = files.reduce((s, f) => s + lines(f), 0);
     const label = groups.get(g).length === 1 && g === files[0] ? g : `${g}/`;
+    const them = files.length === 1 ? 'it' : 'them';
+    const head = `${label}: ${plural(files.length, 'production file')} (${plural(size, 'line')}) ${files.length === 1 ? 'is' : 'are'}`;
+    const runs = `and no manifest, script, command or spawn runs ${them}.`;
+    const caveat = 'It may still be loaded by path at runtime, which static analysis cannot see.';
+    const cap = (list) => (list.length > MAX_EVIDENCE ? [...list.slice(0, MAX_EVIDENCE), { tool: 'archsieve', detail: `${list.length - MAX_EVIDENCE} more` }] : list);
+    if (!tests) {
+      // No test imports the group: only other test-only production files do (#22).
+      const via = snapshot.edges.filter((e) => e.kind === 'imports' && set.has(e.target) && !set.has(e.source) && all.has(e.source))
+        .map((e) => ({ tool: 'archsieve', file: e.source, detail: `imports ${e.target}` })).sort(byKey((x) => `${x.file}\u0000${x.detail}`));
+      const by = [...new Set(via.map((x) => x.file))];
+      return {
+        level: 'signal', rule: 'test-only-dependency', subjects: files,
+        message: `${head} imported only by test-only code (${by.slice(0, 3).join(', ')}${by.length > 3 ? `, ${by.length - 3} more` : ''})${files.length > 1 ? ' and by each other' : ''}, never by a test directly, ${runs} It would retire with that code. ${caveat}`,
+        evidence: cap(via),
+      };
+    }
     return {
       level: 'signal', rule: 'test-only-module', subjects: files,
-      message: `${label}: ${plural(files.length, 'production file')} (${plural(size, 'line')}) ${files.length === 1 ? 'is' : 'are'} imported only by tests (${plural(tests, 'test file')})${files.length > 1 ? ' and by each other' : ''}, and no manifest or --entry-globs names ${files.length === 1 ? 'it' : 'them'} as an entry point. Retired code kept alive by its tests? It may still be loaded by path at runtime, which static analysis cannot see.`,
-      evidence: ev.length > MAX_EVIDENCE ? [...ev.slice(0, MAX_EVIDENCE), { tool: 'archsieve', detail: `${ev.length - MAX_EVIDENCE} more` }] : ev,
+      message: `${head} imported only by tests (${plural(tests, 'test file')})${files.length > 1 ? ' and by each other' : ''}, ${runs} Retired code kept alive by its tests? ${caveat}`,
+      evidence: cap(ev),
     };
   });
   return { findings, suppressed, files: flagged.length };
