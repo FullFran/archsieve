@@ -1,45 +1,54 @@
 ---
-title: ArchSieve@e024759969 (files)
+title: "Files of ArchSieve@15d836ab66"
 ---
 flowchart LR
   n0["bin/archsieve.mjs"]:::code
-  n1(["npm:ajv"]):::external
-  n2["src/adapters/depcruise.mjs"]:::code
-  n3["src/adapters/golist.mjs"]:::code
+  n1["src/adapters/depcruise.mjs"]:::code
+  n2["src/adapters/golist.mjs"]:::code
+  n3["src/adapters/likec4.mjs"]:::code
   n4["src/adapters/nest-probe.cjs"]:::code
   n5["src/adapters/nest.mjs"]:::code
   n6["src/adapters/units.mjs"]:::code
   n7["src/diff.mjs"]:::code
-  n8["src/render.mjs"]:::code
-  n9["src/scan.mjs"]:::code
-  n10["src/util.mjs"]:::code
-  n11["src/validate.mjs"]:::code
-  n12["test/cli.integration.test.mjs"]:::code
-  n13["test/containers.test.mjs"]:::code
-  n14["test/helpers.mjs"]:::code
+  n8["src/model.mjs"]:::code
+  n9["src/render.mjs"]:::code
+  n10["src/scan.mjs"]:::code
+  n11["src/util.mjs"]:::code
+  n12["src/validate.mjs"]:::code
+  n13["test/cli.integration.test.mjs"]:::code
+  n14["test/containers.test.mjs"]:::code
+  n15["test/helpers.mjs"]:::code
+  n16["test/model.test.mjs"]:::code
+  n17["test/render.test.mjs"]:::code
   n0 -->|"imports"| n7
-  n0 -->|"imports"| n8
   n0 -->|"imports"| n9
-  n0 -->|"imports"| n11
-  n2 -->|"imports"| n10
-  n3 -->|"imports"| n10
-  n5 -->|"imports"| n10
-  n6 -->|"imports"| n10
-  n7 -->|"imports"| n8
+  n0 -->|"imports"| n10
+  n0 -->|"imports"| n12
+  n1 -->|"imports"| n11
+  n2 -->|"imports"| n11
+  n5 -->|"imports"| n11
+  n6 -->|"imports"| n11
   n7 -->|"imports"| n9
   n7 -->|"imports"| n10
-  n8 -->|"imports"| n10
-  n9 -->|"imports"| n2
-  n9 -->|"imports"| n3
-  n9 -->|"imports"| n5
-  n9 -->|"imports"| n6
-  n9 -->|"imports"| n10
-  n11 -->|"imports"| n1
-  n12 -->|"imports"| n14
-  n13 -->|"imports"| n14
+  n7 -->|"imports"| n11
+  n8 -->|"imports"| n11
+  n9 -->|"imports"| n11
+  n10 -->|"imports"| n1
+  n10 -->|"imports"| n2
+  n10 -->|"imports"| n3
+  n10 -->|"imports"| n5
+  n10 -->|"imports"| n6
+  n10 -->|"imports"| n8
+  n10 -->|"imports"| n11
+  n13 -->|"imports"| n15
+  n14 -->|"imports"| n15
+  n16 -->|"imports"| n15
+  n17 -->|"imports"| n15
   linkStyle default stroke:#8c959f,stroke-width:1.5px
   classDef code fill:#ddf4ff,stroke:#0969da,color:#1f2328
   classDef external fill:#fff8c5,stroke:#9a6700,color:#1f2328
   classDef module fill:#fbefff,stroke:#8250df,color:#1f2328
   classDef added fill:#dafbe1,stroke:#2da44e,stroke-width:2px,color:#1f2328
   classDef removed fill:#ffebe9,stroke:#cf222e,stroke-dasharray:4 3,color:#1f2328
+  classDef boundary fill:#f6f8fa,stroke:#57606a,stroke-dasharray:6 4,color:#1f2328
+  classDef focus fill:#ddf4ff,stroke:#0969da,stroke-width:4px,color:#1f2328

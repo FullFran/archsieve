@@ -3,7 +3,7 @@ import { parseArgs } from 'node:util';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { scan, scanRef } from '../src/scan.mjs';
 import { diff, toMarkdown } from '../src/diff.mjs';
-import { project, compareProjections, toMermaid, toDot } from '../src/render.mjs';
+import { buildDiagram, toMarkdownView, toMermaid, toDot } from '../src/render.mjs';
 import { validate } from '../src/validate.mjs';
 
 const USAGE = `archsieve: architecture evidence for coding agents (V0, experimental)
@@ -12,9 +12,14 @@ Usage:
   archsieve scan <dir> [--ref <git-ref>] [-o snapshot.json] [--paths a,b] [--exclude <regex, added to defaults>] [--ts-config <file>]
                        [--no-js] [--no-units] [--go auto|none|<dir,...>] [--nest-entry <compiled module.js> [--nest-export AppModule]]
   archsieve diff <before.json> <after.json> [--format json|md] [--depth N] [-o file] [--fail-on error|signal|none]
-  archsieve render <snapshot.json> [--view components|files|nest] [--depth N] [--format mermaid|dot]
-                       [--compare <before.json>] [--externals] [-o file]
+  archsieve render <snapshot.json> [--view components|files|nest] [--depth N] [--format mermaid|dot|md]
+                       [--compare <before.json>] [--externals] [--within <dir>] [--focus <id>]
+                       [--max-nodes N (default 40)] [--max-edges N (default 100)] [-o file]
   archsieve validate <snapshot-or-diff.json>
+
+render: --format md adds title, concern, scope line and legend. --within zooms into a folder (outside neighbours become
+dashed boundary boxes); --focus shows one element with its direct dependencies and dependents. Over budget, components
+reduce --depth; files and nest exit 2. 0 disables a budget.
 
 Exit codes: 0 ok, 1 --fail-on threshold reached or invalid document, 2 usage or tool error.
 --nest-entry EXECUTES the target's module top-level code (providers are not instantiated). Use only on trusted code.`;
@@ -25,6 +30,7 @@ const OPTIONS = {
   'no-js': { type: 'boolean' }, 'no-units': { type: 'boolean' }, go: { type: 'string' },
   'nest-entry': { type: 'string' }, 'nest-export': { type: 'string' },
   format: { type: 'string' }, 'fail-on': { type: 'string' },
+  within: { type: 'string' }, focus: { type: 'string' }, 'max-nodes': { type: 'string' }, 'max-edges': { type: 'string' },
   view: { type: 'string' }, depth: { type: 'string' }, compare: { type: 'string' }, externals: { type: 'boolean' },
   help: { type: 'boolean', short: 'h' },
 };
@@ -68,15 +74,16 @@ function main(argv) {
     case 'render': {
       if (args.length !== 1) usageError('render needs <snapshot.json>');
       const view = oneOf(o.view ?? 'components', ['components', 'files', 'nest'], 'view');
-      const format = oneOf(o.format ?? 'mermaid', ['mermaid', 'dot'], 'format');
+      const format = oneOf(o.format ?? 'mermaid', ['mermaid', 'dot', 'md'], 'format');
       const depth = Number(o.depth ?? 2);
       if (!Number.isInteger(depth) || depth < 1) usageError('--depth must be a positive integer');
-      const pOpts = { view, depth, externals: !!o.externals };
-      const after = readJson(args[0]);
-      let p = project(after, pOpts);
-      if (o.compare) p = compareProjections(project(readJson(o.compare), pOpts), p);
-      const title = `${after.subject.name}${after.subject.commit ? `@${after.subject.commit.slice(0, 10)}` : ''} (${view}${o.compare ? ', compared' : ''})`;
-      out(format === 'dot' ? toDot(p, { title }) : toMermaid(p, { title }), o.output);
+      const budget = (v, name, dflt) => { const n = Number(v ?? dflt); if (!Number.isInteger(n) || n < 0) usageError(`--${name} must be a non-negative integer (0 disables it)`); return n; };
+      const d = buildDiagram(readJson(args[0]), {
+        view, depth, externals: !!o.externals, within: o.within ?? null, focus: o.focus ?? null,
+        maxNodes: budget(o['max-nodes'], 'max-nodes', 40), maxEdges: budget(o['max-edges'], 'max-edges', 100),
+        before: o.compare ? readJson(o.compare) : null,
+      });
+      out(format === 'md' ? toMarkdownView(d) : format === 'dot' ? toDot(d.projection, { title: d.title }) : toMermaid(d.projection, { title: d.title }), o.output);
       return 0;
     }
     case 'validate': {

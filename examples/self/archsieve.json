@@ -3,7 +3,7 @@
   "kind": "archsieve-snapshot",
   "subject": {
     "name": "ArchSieve",
-    "commit": "e024759969968aa7ffdabb52daec183c1ba544b0",
+    "commit": "15d836ab66be989712c96658aea70b9d51dc8a2e",
     "dirty": true
   },
   "tools": [
@@ -63,6 +63,15 @@
       ]
     },
     {
+      "id": "src/adapters/likec4.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
       "id": "src/adapters/nest-probe.cjs",
       "kind": "file",
       "evidence": [
@@ -91,6 +100,15 @@
     },
     {
       "id": "src/diff.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "src/model.mjs",
       "kind": "file",
       "evidence": [
         {
@@ -154,6 +172,24 @@
     },
     {
       "id": "test/helpers.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "test/model.test.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "test/render.test.mjs",
       "kind": "file",
       "evidence": [
         {
@@ -296,6 +332,18 @@
       ]
     },
     {
+      "source": "src/model.mjs",
+      "target": "src/util.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/model.mjs",
+          "detail": "./util.mjs"
+        }
+      ]
+    },
+    {
       "source": "src/render.mjs",
       "target": "src/util.mjs",
       "kind": "imports",
@@ -333,6 +381,18 @@
     },
     {
       "source": "src/scan.mjs",
+      "target": "src/adapters/likec4.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/scan.mjs",
+          "detail": "./adapters/likec4.mjs"
+        }
+      ]
+    },
+    {
+      "source": "src/scan.mjs",
       "target": "src/adapters/nest.mjs",
       "kind": "imports",
       "evidence": [
@@ -352,6 +412,18 @@
           "tool": "dependency-cruiser",
           "file": "src/scan.mjs",
           "detail": "./adapters/units.mjs"
+        }
+      ]
+    },
+    {
+      "source": "src/scan.mjs",
+      "target": "src/model.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/scan.mjs",
+          "detail": "./model.mjs"
         }
       ]
     },
@@ -399,6 +471,30 @@
         {
           "tool": "dependency-cruiser",
           "file": "test/containers.test.mjs",
+          "detail": "./helpers.mjs"
+        }
+      ]
+    },
+    {
+      "source": "test/model.test.mjs",
+      "target": "test/helpers.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "test/model.test.mjs",
+          "detail": "./helpers.mjs"
+        }
+      ]
+    },
+    {
+      "source": "test/render.test.mjs",
+      "target": "test/helpers.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "test/render.test.mjs",
           "detail": "./helpers.mjs"
         }
       ]

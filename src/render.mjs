@@ -5,13 +5,27 @@ import { byKey } from './util.mjs';
 
 const CODE_KINDS = new Set(['file', 'go-package', 'vendored-file']);
 
-function componentOf(node, depth) {
+function componentOf(node, depth, within) {
   const path = node.kind === 'file' ? node.id.split('/').slice(0, -1) : (node.file ?? '.').split('/');
   const segs = path.filter((s) => s && s !== '.');
+  // Under --within the depth is counted below the zoomed folder.
+  if (within) { const w = within.split('/'); return [...w, ...segs.slice(w.length, w.length + depth)].join('/'); }
   return segs.length ? segs.slice(0, depth).join('/') : '(root)';
 }
 
-export function project(snapshot, { view = 'components', depth = 2, externals = false } = {}) {
+// Where an element lives on disk (a file path, or a folder for packages); null when the snapshot does not say.
+const whereOf = (n) => (n.kind === 'file' ? n.id : n.file ?? (n.kind === 'go-package' ? n.id.replace(/^go:/, '') : null));
+
+// An element outside the --within scope becomes one boundary box per top-level folder (or external package).
+function boundaryOf(n) {
+  if (n.kind === 'external-package') return { id: n.id, label: `${n.id} (external)`, kind: 'boundary' };
+  const w = whereOf(n);
+  const segs = w ? (n.kind === 'file' || n.kind.startsWith('nest-') ? w.split('/').slice(0, -1) : w.split('/')) : [];
+  const top = segs.find((s) => s && s !== '.');
+  return top ? { id: `out:${top}`, label: `${top}/ (outside)`, kind: 'boundary' } : { id: 'out:(root)', label: '(root files, outside)', kind: 'boundary' };
+}
+
+export function project(snapshot, { view = 'components', depth = 2, externals = false, within = null } = {}) {
   const nodes = new Map(), edges = new Map();
   const nodeById = new Map(snapshot.nodes.map((n) => [n.id, n]));
   let mapNode;
@@ -21,8 +35,17 @@ export function project(snapshot, { view = 'components', depth = 2, externals = 
     mapNode = (n) => (CODE_KINDS.has(n.kind) ? { id: n.id, label: n.id.replace(/^go:/, ''), kind: n.kind } : externals && n.kind === 'external-package' ? { id: n.id, label: n.id, kind: n.kind } : null);
   } else {
     mapNode = (n) => {
-      if (CODE_KINDS.has(n.kind)) { const c = componentOf(n, depth); return { id: `dir:${c}`, label: c, kind: 'component' }; }
+      if (CODE_KINDS.has(n.kind)) { const c = componentOf(n, depth, within); return { id: `dir:${c}`, label: c, kind: 'component' }; }
       return externals && n.kind === 'external-package' ? { id: n.id, label: n.id, kind: n.kind } : null;
+    };
+  }
+  if (within) {
+    const inner = mapNode;
+    mapNode = (n) => {
+      const m = inner(n);
+      if (!m) return null;
+      const w = n.kind === 'external-package' ? null : whereOf(n);
+      return w && (w === within || w.startsWith(`${within}/`)) ? m : boundaryOf(n);
     };
   }
   for (const n of snapshot.nodes) { const m = mapNode(n); if (m && !nodes.has(m.id)) nodes.set(m.id, m); }
@@ -30,12 +53,19 @@ export function project(snapshot, { view = 'components', depth = 2, externals = 
     if (view === 'nest' ? !e.kind.startsWith('nest-') : e.kind !== 'imports') continue;
     const s = nodeById.get(e.source) && mapNode(nodeById.get(e.source));
     const t = nodeById.get(e.target) && mapNode(nodeById.get(e.target));
-    if (!s || !t || s.id === t.id) continue;
+    if (!s || !t || s.id === t.id || (s.kind === 'boundary' && t.kind === 'boundary')) continue;
     const k = `${s.id}\u0000${t.id}\u0000${e.kind}`;
     const prev = edges.get(k);
     const relation = e.kind !== 'imports' ? e.kind : e.typeOnly ? 'type-only' : e.dynamic ? 'lazy' : 'imports';
     const relations = { ...prev?.relations, [relation]: (prev?.relations?.[relation] ?? 0) + 1 };
     edges.set(k, { source: s.id, target: t.id, kind: e.kind, count: (prev?.count ?? 0) + 1, relations });
+  }
+  if (within) {
+    const used = new Set([...edges.values()].flatMap((e) => [e.source, e.target]));
+    for (const [id, n] of nodes) {
+      if (n.kind === 'boundary' && !used.has(id)) nodes.delete(id);
+      else if (n.group && !nodes.has(n.group)) nodes.set(id, { ...n, group: null });
+    }
   }
   return { nodes: [...nodes.values()].sort(byKey((n) => n.id)), edges: [...edges.values()].sort(byKey((e) => `${e.source}\u0000${e.target}\u0000${e.kind}`)) };
 }
@@ -75,13 +105,15 @@ const CLASS_DEFS = [
   '  classDef module fill:#fbefff,stroke:#8250df,color:#1f2328',
   '  classDef added fill:#dafbe1,stroke:#2da44e,stroke-width:2px,color:#1f2328',
   '  classDef removed fill:#ffebe9,stroke:#cf222e,stroke-dasharray:4 3,color:#1f2328',
+  '  classDef boundary fill:#f6f8fa,stroke:#57606a,stroke-dasharray:6 4,color:#1f2328',
+  '  classDef focus fill:#ddf4ff,stroke:#0969da,stroke-width:4px,color:#1f2328',
 ];
-const nodeClass = (n) => (n.status === 'added' || n.status === 'removed' ? n.status : KIND_CLASS(n.kind));
+const nodeClass = (n) => (n.status === 'added' || n.status === 'removed' ? n.status : n.focus ? 'focus' : n.kind === 'boundary' ? 'boundary' : KIND_CLASS(n.kind));
 
 export function toMermaid(p, { title } = {}) {
   const ids = new Map(p.nodes.map((n, i) => [n.id, `n${i}`]));
   const L = ['flowchart LR'];
-  if (title) L.unshift('---', `title: ${q(title)}`, '---');
+  if (title) L.unshift('---', `title: "${title.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`, '---');
   const groups = new Map();
   for (const n of p.nodes) { const g = n.group ?? ''; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(n); }
   const emit = (n, indent) => {
@@ -129,7 +161,7 @@ export function toDot(p, { title } = {}) {
   for (const [g, ns] of [...groups.entries()].sort(byKey(([g]) => g))) {
     const ind = g ? '    ' : '  ';
     if (g) L.push(`  subgraph cluster_${gi++} {`, `    label=${dq(g.split(':').pop())};`);
-    for (const n of ns) L.push(`${ind}${dq(n.id)} [label=${dq(n.label)}${n.kind === 'external-package' ? ', shape=ellipse' : n.kind === 'nest-module' ? ', shape=component' : ''}${color(n.status)}];`);
+    for (const n of ns) L.push(`${ind}${dq(n.id)} [label=${dq(n.label)}${n.kind === 'external-package' ? ', shape=ellipse' : n.kind === 'nest-module' ? ', shape=component' : ''}${n.kind === 'boundary' ? ', style=dashed, color="#57606a"' : n.focus ? ', penwidth=4' : ''}${color(n.status)}];`);
     if (g) L.push('  }');
   }
   for (const e of p.edges) {
@@ -138,4 +170,116 @@ export function toDot(p, { title } = {}) {
   }
   L.push('}');
   return `${L.join('\n')}\n`;
+}
+
+// ---- Diagram assembly: scope, budget, focus, titles, markdown ----
+
+const usage = (message) => Object.assign(new Error(message), { code: 'USAGE' });
+const VIEW_NAME = { components: 'Components', files: 'Files', nest: 'Nest DI' };
+const CONCERN = {
+  components: 'Which folders depend on which, and how?',
+  files: 'Which files import which?',
+  nest: 'Which Nest modules import each other, and which classes are injected where?',
+};
+
+// Keep one element and the arrows that touch it, plus the elements at their other end.
+function focusProjection(p, id) {
+  let hits = p.nodes.filter((n) => n.id === id);
+  if (!hits.length) hits = p.nodes.filter((n) => n.label === id || n.id === `dir:${id}`);
+  if (!hits.length) throw usage(`--focus: no element "${id}" in this view; use a node id, a file path or a component folder shown by the full diagram`);
+  if (hits.length > 1) throw usage(`--focus: "${id}" is ambiguous (${hits.map((n) => n.id).join(', ')}); use the full id`);
+  const hit = hits[0];
+  const edges = p.edges.filter((e) => e.source === hit.id || e.target === hit.id);
+  const keep = new Set([hit.id, ...edges.flatMap((e) => [e.source, e.target])]);
+  const nodes = p.nodes.filter((n) => keep.has(n.id)).map((n) => ({ ...n, ...(n.group && !keep.has(n.group) ? { group: null } : {}), ...(n.id === hit.id ? { focus: true } : {}) }));
+  return { nodes, edges, focusLabel: hit.label };
+}
+
+const over = (p, { maxNodes, maxEdges }) => (maxNodes > 0 && p.nodes.length > maxNodes) || (maxEdges > 0 && p.edges.length > maxEdges);
+function overParts(p, { maxNodes, maxEdges }, fmt) {
+  const out = [];
+  if (maxNodes > 0 && p.nodes.length > maxNodes) out.push(fmt('boxes', p.nodes.length, maxNodes));
+  if (maxEdges > 0 && p.edges.length > maxEdges) out.push(fmt('arrows', p.edges.length, maxEdges));
+  return out.join(' and ');
+}
+
+// Builds everything a renderer needs: the (possibly reduced) projection, its title, concern and scope notes.
+export function buildDiagram(snapshot, { view = 'components', depth = 2, externals = false, within = null, focus = null, maxNodes = 40, maxEdges = 100, before = null } = {}) {
+  if (within !== null) {
+    within = within.replace(/^(\.\/)+/, '').replace(/\/+$/, '');
+    if (!within || within === '.') throw usage('--within needs a folder below the repository root, e.g. --within src/users');
+  }
+  const budget = { maxNodes, maxEdges };
+  const wDepth = within ? within.split('/').length : 0;
+  const make = (d, scope) => {
+    const o = { view, depth: d, externals, within: scope ? within : null };
+    const a = project(snapshot, o);
+    return before ? compareProjections(project(before, o), a) : a;
+  };
+  const notes = [];
+  let d = depth, p = make(d, true);
+  let fullAt = within ? make(d + wDepth, false) : p;
+  let focusLabel = null;
+  if (focus !== null) ({ focusLabel, ...p } = focusProjection(p, focus));
+  if (view === 'components' && focus === null) {
+    const first = p;
+    while (over(p, budget) && d > 1) { d--; p = make(d, true); }
+    if (d < depth) {
+      notes.push(`depth reduced from ${depth} to ${d} to fit ${overParts(first, budget, (w, _n, max) => `${max} ${w}`)}`);
+      fullAt = within ? make(d + wDepth, false) : p;
+    }
+    if (over(p, budget)) notes.push(`${d < depth ? 'still exceeds' : 'exceeds'} the budget: ${overParts(p, budget, (w, n, max) => `${n} ${w} (max ${max})`)}`);
+  } else if (over(p, budget)) {
+    throw usage(`${VIEW_NAME[view]} view has ${p.nodes.length} nodes and ${p.edges.length} edges, over the budget of ${maxNodes || 'unlimited'} nodes and ${maxEdges || 'unlimited'} edges (--max-nodes, --max-edges). Narrow it with --within <dir>, --focus <id> or --view components; --max-nodes 0 disables the node budget.`);
+  }
+  const subject = `${snapshot.subject.name}${snapshot.subject.commit ? `@${snapshot.subject.commit.slice(0, 10)}` : ''}`;
+  const quals = [...(view === 'components' ? [`depth ${d}`] : []), ...(within ? [`within ${within}`] : []), ...(before ? ['compared'] : [])];
+  const base = `${VIEW_NAME[view]} of ${subject}${quals.length ? ` (${quals.join(', ')})` : ''}`;
+  const unit = view === 'components' ? 'folders' : view === 'files' ? (externals ? 'files and packages' : 'files') : 'Nest nodes';
+  const shown = p.nodes.filter((n) => n.kind !== 'boundary').length, boundaries = p.nodes.length - shown;
+  const scope = [`Snapshot ${subject}`, `showing ${shown} of ${fullAt.nodes.filter((n) => n.kind !== 'boundary').length} ${unit}`];
+  if (within) scope.push(`within ${within}${boundaries ? ` (outside neighbours collapsed into ${boundaries} boundary ${boundaries === 1 ? 'box' : 'boxes'})` : ''}`);
+  if (focus !== null) scope.push(`focus on ${focusLabel} (direct dependencies and dependents only)`);
+  scope.push(...notes);
+  return {
+    projection: p, view, title: focus !== null ? `Focus on ${focusLabel} in ${base}` : base,
+    concern: focus !== null ? `What does ${focusLabel} use, and what uses ${focusLabel}?` : CONCERN[view],
+    scope: scope.join(' · '),
+  };
+}
+
+// One row per style actually present in the projection: [mark, meaning].
+function legendRows(p, view) {
+  const rel = new Set();
+  let counted = false;
+  for (const e of p.edges) {
+    if (NEST_RELATION[e.kind]) rel.add(e.kind);
+    else for (const r of Object.keys(e.relations ?? { imports: 1 })) rel.add(r);
+    if (e.count > 1) counted = true;
+  }
+  const kinds = new Set(p.nodes.filter((n) => !n.status && !n.focus && n.kind !== 'boundary').map((n) => KIND_CLASS(n.kind)));
+  const has = (f) => p.nodes.some(f);
+  const rows = [];
+  if (kinds.has('code')) rows.push(['Blue box', view === 'components' ? 'Folder (a component of the code)' : view === 'files' ? 'Source file' : 'Nest provider, controller or injectable']);
+  if (kinds.has('external')) rows.push(['Yellow rounded box', 'External npm package']);
+  if (kinds.has('module')) rows.push(['Purple double-bordered box', 'Nest module; the boxes inside it are its providers']);
+  if (has((n) => n.kind === 'boundary')) rows.push(['Dashed grey box', 'Outside the zoomed scope, collapsed per top-level folder or package']);
+  if (has((n) => n.focus)) rows.push(['Thick-bordered box', 'The focused element']);
+  if (has((n) => n.status === 'added')) rows.push(['Green box with thick border', 'Added since the compared snapshot']);
+  if (has((n) => n.status === 'removed')) rows.push(['Red dashed box', 'Removed since the compared snapshot']);
+  if (rel.has('imports')) rows.push(['Solid arrow labelled `imports`', 'Static import, needed at runtime (arrow points at the imported element)']);
+  if (rel.has('lazy')) rows.push(['Solid arrow labelled `lazy`', 'Dynamic import(), loaded on demand']);
+  if (rel.has('type-only')) rows.push(['Dashed arrow labelled `type-only`', 'Import erased at compile time (the arrow is dashed when only type-only imports back it)']);
+  if (rel.has('nest-imports')) rows.push(['Dashed arrow labelled `imports`', 'A Nest module imports another module']);
+  if (rel.has('nest-injects')) rows.push(['Solid arrow labelled `injects`', 'A class is injected into another']);
+  if (counted) rows.push(['`x3` after a label', 'How many underlying relations the arrow stands for']);
+  if (p.edges.some((e) => e.status === 'added')) rows.push(['Thick green arrow', 'Added since the compared snapshot']);
+  if (p.edges.some((e) => e.status === 'removed')) rows.push(['Red dashed arrow', 'Removed since the compared snapshot']);
+  return rows;
+}
+
+export function toMarkdownView(d) {
+  const rows = legendRows(d.projection, d.view).map(([m, t]) => `| ${m} | ${t} |`);
+  return [`## ${d.title}`, '', d.concern, '', d.scope, '', '```mermaid', toMermaid(d.projection, { title: d.title }).trimEnd(), '```', '',
+    '**Legend**', '', '| Mark | Meaning |', '| --- | --- |', ...rows, ''].join('\n');
 }
