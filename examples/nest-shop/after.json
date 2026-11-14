@@ -3,7 +3,7 @@
   "kind": "archsieve-snapshot",
   "subject": {
     "name": "after",
-    "commit": "599cafef7d944414652ca893880dffbae472f8c9",
+    "commit": "d6353d5c87fec0aeb654e199b4ce05d33410d63a",
     "dirty": false
   },
   "tools": [
@@ -39,6 +39,12 @@
       "scope": ".",
       "status": "ok",
       "note": "0 test files or packages; globs: **/test/**, **/tests/**, **/__tests__/**, **/*.test.*, **/*.spec.*, **/*_test.*"
+    },
+    {
+      "tool": "archsieve patterns",
+      "scope": "child-process calls",
+      "status": "ok",
+      "note": "0 runtime links, 0 call sites to programs outside the repository, 0 unresolved; 0 of 8 production source files name a child-process module"
     }
   ],
   "nodes": [
@@ -699,6 +705,7 @@
   "limitations": [
     "Static import graph only: no runtime calls, network/IPC/queue/event links, reflection or computed dynamic imports. Unresolvable imports are listed as unknown findings, not guessed.",
     "Units come from manifests read as data (package.json, Cargo targets via cargo metadata, go.mod and Go main packages, tauri.conf.json). Links between units at runtime (HTTP, IPC, child processes) are not visible statically.",
-    "NestJS DI graph as registered by Nest in preview mode: providers are not instantiated, so factory/value providers and anything resolved via ModuleRef/request scope at runtime is not visible."
+    "NestJS DI graph as registered by Nest in preview mode: providers are not instantiated, so factory/value providers and anything resolved via ModuleRef/request scope at runtime is not visible.",
+    "Runtime links from call sites are read line by line, not parsed (ADR 0006): a child-process call counts only when its program is a string literal or a same-file const, and it is matched to a container by path or bin name. Calls built at runtime are unknown findings; HTTP, IPC and queues are not covered."
   ]
 }

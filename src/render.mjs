@@ -29,7 +29,7 @@ function boundaryOf(n) {
 // A container box says what it is, where it lives, its technology and, with a declared model, its
 // cross-check state in words (never colour alone).
 const STATE_TEXT = { 'declared-unverified': 'declared, unverified', undeclared: 'in code, not in model' };
-const LINK_STATE_TEXT = { 'declared-unverified': 'unverified', undeclared: 'not in model', 'code-dependency-only': 'code only, runtime unverified' };
+const LINK_STATE_TEXT = { 'declared-unverified': 'unverified', undeclared: 'not in model', 'code-dependency-only': 'code only, runtime unverified', evidenced: 'evidenced (static pattern)' };
 function containerNode(n) {
   const group = n.declared?.parent ? `group:${n.declared.parent}` : null;
   if (n.kind === 'system') return { id: n.id, label: `${n.title}<br/>external system`, kind: 'system', group };
@@ -65,13 +65,22 @@ export function project(snapshot, { view = 'components', depth = 2, externals = 
   }
   for (const n of snapshot.nodes) { const m = mapNode(n); if (m && !nodes.has(m.id)) nodes.set(m.id, m); }
   for (const e of snapshot.edges) {
-    if (view === 'nest' ? !e.kind.startsWith('nest-') : e.kind !== (view === 'containers' ? 'depends-on' : 'imports')) continue;
+    if (view === 'nest' ? !e.kind.startsWith('nest-') : view === 'containers' ? !['depends-on', 'runtime-link'].includes(e.kind) : e.kind !== 'imports') continue;
     const s = nodeById.get(e.source) && mapNode(nodeById.get(e.source));
     const t = nodeById.get(e.target) && mapNode(nodeById.get(e.target));
     if (!s || !t || s.id === t.id || (s.kind === 'boundary' && t.kind === 'boundary')) continue;
     const k = `${s.id}\u0000${t.id}\u0000${e.kind}`;
     if (e.kind === 'depends-on') {
-      edges.set(k, { source: s.id, target: t.id, kind: e.kind, relations: e.relations ?? {}, ...(e.testRelations ? { testRelations: e.testRelations } : {}), ...(e.declared ? { declared: e.declared } : {}), ...(e.status ? { state: e.status } : {}) });
+      edges.set(k, { ...edges.get(k), source: s.id, target: t.id, kind: e.kind, relations: e.relations ?? {}, ...(e.testRelations ? { testRelations: e.testRelations } : {}), ...(e.declared ? { declared: e.declared } : {}), ...(e.status ? { state: e.status } : {}) });
+      continue;
+    }
+    if (e.kind === 'runtime-link') {
+      // Pattern evidence joins the arrow of the same pair instead of drawing a second one.
+      const dk = `${s.id}\u0000${t.id}\u0000depends-on`;
+      const prev = edges.get(dk) ?? { source: s.id, target: t.id, kind: 'depends-on', relations: {} };
+      const runtime = { ...prev.runtime };
+      for (const [r, n] of Object.entries(e.relations ?? {})) runtime[r] = (runtime[r] ?? 0) + n;
+      edges.set(dk, { ...prev, runtime });
       continue;
     }
     const prev = edges.get(k);
@@ -114,11 +123,14 @@ function edgeLabel(e) {
   if (NEST_RELATION[e.kind]) return `${NEST_RELATION[e.kind]}${e.count > 1 ? ` x${e.count}` : ''}`;
   if (e.kind === 'depends-on') {
     const declared = (e.declared ?? []).map((d) => [d.title, d.technology ? `(${d.technology})` : ''].filter(Boolean).join(' ')).join(', ');
-    return [declared, relationText(e.relations, e.testRelations), LINK_STATE_TEXT[e.state]].filter(Boolean).join(' · ');
+    const runtime = Object.entries(e.runtime ?? {}).sort().map(([r, n]) => `${r}${n > 1 ? ` x${n}` : ''} (static pattern)`).join(', ');
+    return [declared, relationText(e.relations, e.testRelations), runtime, LINK_STATE_TEXT[e.state]].filter(Boolean).join(' · ');
   }
   return relationText(e.relations ?? { imports: e.count ?? 1 }, e.testRelations);
 }
 // Dashed when nothing behind the arrow survives compilation (only type-only imports).
+// Dashed when only a static call-site pattern backs the arrow, and no model vouches for it.
+const patternOnlyEdge = (e) => e.runtime && !Object.keys(e.relations ?? {}).length && !e.state;
 const typeOnlyEdge = (e) => e.kind === 'imports' && e.relations && Object.keys(e.relations).every((r) => r === 'type-only');
 
 const q = (s) => String(s).replace(/"/g, '#quot;');
@@ -169,7 +181,7 @@ export function toMermaid(p, { title } = {}) {
   const linkStyles = p.edges.length ? ['  linkStyle default stroke:#8c959f,stroke-width:1.5px'] : [];
   p.edges.forEach((e, i) => {
     const label = edgeLabel(e);
-    const arrow = e.kind === 'nest-imports' || e.status === 'removed' || e.state === 'declared-unverified' || typeOnlyEdge(e) ? '-.->' : '-->';
+    const arrow = e.kind === 'nest-imports' || e.status === 'removed' || e.state === 'declared-unverified' || typeOnlyEdge(e) || patternOnlyEdge(e) ? '-.->' : '-->';
     L.push(`  ${ids.get(e.source)} ${arrow}${label ? `|"${q(label)}"|` : ''} ${ids.get(e.target)}`);
     if (e.status === 'added') linkStyles.push(`  linkStyle ${i} stroke:#2da44e,stroke-width:3px`);
     if (e.status === 'removed') linkStyles.push(`  linkStyle ${i} stroke:#cf222e,stroke-width:2px`);
@@ -199,7 +211,7 @@ export function toDot(p, { title } = {}) {
     if (g) L.push('  }');
   }
   for (const e of p.edges) {
-    const style = e.kind === 'nest-imports' ? 'style=dotted, ' : typeOnlyEdge(e) || e.state === 'declared-unverified' ? 'style=dashed, ' : '';
+    const style = e.kind === 'nest-imports' ? 'style=dotted, ' : typeOnlyEdge(e) || patternOnlyEdge(e) || e.state === 'declared-unverified' ? 'style=dashed, ' : '';
     L.push(`  ${dq(e.source)} -> ${dq(e.target)} [${style}label=${dq(edgeLabel(e))}${color(e.status)}];`);
   }
   L.push('}');
@@ -304,6 +316,8 @@ function containerLegend(p) {
   if (rel.has('package-dependency')) rows.push(['`package-dependency`', 'A package.json dependency on the other container']);
   if (edge((e) => e.state === 'declared-unverified')) rows.push(['Dashed arrow ending in `unverified`', 'Declared in the model, no static evidence in the code (runtime links such as HTTP or IPC are never visible statically)']);
   if (edge((e) => e.state === 'code-dependency-only')) rows.push(['Arrow ending in `code only, runtime unverified`', 'Declared as a runtime link (HTTP, IPC, child process, queue...); the code shows imports between the two containers, but nothing proves the runtime link itself']);
+  if (edge((e) => e.runtime)) rows.push(['`child-process (static pattern)`', 'A call site starts the other container as a child process (literal program or bin name, read by a line pattern: lower confidence than an import; dashed when nothing else backs the arrow)']);
+  if (edge((e) => e.state === 'evidenced')) rows.push(['Arrow ending in `evidenced (static pattern)`', 'Declared as a child-process link in the model, and a call site matches it']);
   if (edge((e) => e.state === 'undeclared')) rows.push(['Arrow ending in `not in model`', 'Found in the code, not declared in the model']);
   return rows;
 }

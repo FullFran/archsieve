@@ -99,6 +99,8 @@ export function applyModel(root, units, model, evFile) {
 // such as HTTP, IPC, stdio, a child process or a queue, or a technology not recognised here) needs
 // evidence of its own. Relation metadata `link 'code'` or `link 'runtime'` overrides the mapping.
 const CODE_TECHNOLOGY = /^\s*(imports?|library|lib|npm( package)?|package( dependency)?|module|crate|go module|code( dependency)?|in-process|function calls?|source)\s*$/i;
+// The runtime technologies a static child-process pattern can evidence (ADR 0006).
+const CHILD_PROCESS_TECHNOLOGY = /child[ _-]?process|subprocess|\bspawn|\bexec\b|stdio|sidecar|\bcli\b|command line/i;
 export const linkKind = (d) => d.link ?? (!d.technology || CODE_TECHNOLOGY.test(d.technology) ? 'code' : 'runtime');
 
 // After linking: every declared link is confirmed by an observed depends-on edge or stays
@@ -108,8 +110,17 @@ export function crossCheckLinks(snapshot, declaredLinks) {
   const findings = [];
   const nodes = new Map(snapshot.nodes.map((n) => [n.id, n]));
   const observed = new Map(snapshot.edges.filter((e) => e.kind === 'depends-on').map((e) => [`${e.source}\u0000${e.target}`, e]));
+  const runtimeEv = new Map(snapshot.edges.filter((e) => e.kind === 'runtime-link').map((e) => [`${e.source}\u0000${e.target}`, e]));
   for (const l of declaredLinks) {
     const e = observed.get(`${l.source}\u0000${l.target}`);
+    const pattern = runtimeEv.get(`${l.source}\u0000${l.target}`);
+    // A declared child-process link with a matching call site is evidenced: pattern confidence,
+    // not proof, so it has its own state instead of confirmed.
+    if (pattern && l.declared.some((d) => linkKind(d) === 'runtime' && CHILD_PROCESS_TECHNOLOGY.test(d.technology ?? ''))) {
+      if (e) Object.assign(e, { declared: l.declared, status: 'evidenced', evidence: sortEvidence([...e.evidence, ...l.evidence]) });
+      else snapshot.edges.push({ source: l.source, target: l.target, kind: 'depends-on', declared: l.declared, status: 'evidenced', evidence: l.evidence });
+      continue;
+    }
     if (e) {
       const runtime = l.declared.filter((d) => linkKind(d) === 'runtime');
       Object.assign(e, { declared: l.declared, status: runtime.length ? 'code-dependency-only' : 'confirmed', evidence: sortEvidence([...e.evidence, ...l.evidence]) });
