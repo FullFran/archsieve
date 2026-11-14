@@ -3,7 +3,7 @@
   "kind": "archsieve-snapshot",
   "subject": {
     "name": "before",
-    "commit": "ec1f38224d2861909a4a6535c64ab4a3539bfbb8",
+    "commit": "83faec0535dbee83a6886b514dfc7a41a8635ac8",
     "dirty": false
   },
   "tools": [
@@ -39,6 +39,12 @@
       "scope": ".",
       "status": "ok",
       "note": "0 test files or packages; globs: **/test/**, **/tests/**, **/__tests__/**, **/*.test.*, **/*.spec.*, **/*_test.*"
+    },
+    {
+      "tool": "test-only modules",
+      "scope": ".",
+      "status": "skipped",
+      "note": "no test files matched the test globs"
     },
     {
       "tool": "container facts",

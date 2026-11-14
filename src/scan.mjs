@@ -12,6 +12,7 @@ import { applyModel, crossCheckLinks, modelEvidenceFile } from './model.mjs';
 import { markTests, testMatcher, DEFAULT_TEST_GLOBS } from './tests.mjs';
 import { runtimeLinks } from './adapters/patterns.mjs';
 import { containerFacts } from './adapters/facts.mjs';
+import { testOnlyModules } from './testonly.mjs';
 import { tsConfigHints } from './adapters/tsconfig.mjs';
 import { readHistory, applyHistory, DEFAULT_SINCE, MAX_CHANGESET } from './adapters/history.mjs';
 
@@ -258,6 +259,13 @@ export function scan(target, opts = {}) {
   const testGlobs = opts.testGlobs ?? DEFAULT_TEST_GLOBS;
   const marked = markTests(snapshot.nodes, testGlobs);
   snapshot.analyses.push({ tool: 'test globs', scope: (opts.paths ?? ['.']).join(','), status: 'ok', note: `${marked} test files or packages; globs: ${testGlobs.join(', ')}` });
+  if (!snapshot.edges.some((e) => e.kind === 'imports') || !marked) {
+    snapshot.analyses.push({ tool: 'test-only modules', scope: (opts.paths ?? ['.']).join(','), status: 'skipped', note: marked ? 'no file import graph' : 'no test files matched the test globs' });
+  } else {
+    const to = testOnlyModules(root, snapshot, { entryGlobs: opts.entryGlobs ?? [] });
+    for (const f of to.findings) snapshot.findings.push({ id: findingId(f), ...f });
+    snapshot.analyses.push({ tool: 'test-only modules', scope: (opts.paths ?? ['.']).join(','), status: 'ok', note: `${to.files} files in ${to.findings.length} groups; ${to.entryPoints} entry points from package.json${opts.entryGlobs?.length ? `; entry globs: ${opts.entryGlobs.join(', ')}` : ''}` });
+  }
   if (opts.units !== false || declared) {
     snapshot.edges.push(...linkUnits(root, snapshot));
   }

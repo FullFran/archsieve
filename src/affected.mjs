@@ -29,6 +29,8 @@ function gitChanged(repo, base) {
   return { inside, outside, head, dirty };
 }
 
+const GRAPH_TOOLS = new Set(['dependency-cruiser', 'go list']);
+
 export function affected(snapshot, { changed = [], base = null, repo = '.', ignore = [] } = {}) {
   const blind = [];
   let files = changed, outside = [];
@@ -79,7 +81,8 @@ export function affected(snapshot, { changed = [], base = null, repo = '.', igno
       if (spec && names.has(stem(spec.replace(/\/+$/, '')))) blind.push({ reason: 'unresolved-import', file: f.subjects[0], detail: spec });
     }
   }
-  for (const a of snapshot.analyses) if (a.status !== 'ok') blind.push({ reason: 'analysis-skipped', detail: `${a.tool} (${a.scope}): ${a.note ?? a.status}` });
+  // Only analyses that build the import graph can leave the closure incomplete.
+  for (const a of snapshot.analyses) if (a.status !== 'ok' && GRAPH_TOOLS.has(a.tool)) blind.push({ reason: 'analysis-skipped', detail: `${a.tool} (${a.scope}): ${a.note ?? a.status}` });
   const marked = snapshot.analyses.some((a) => a.tool === 'test globs');
   if (!marked) blind.push({ reason: 'no-test-marks', detail: 'the snapshot predates the test/production split; rescan with archsieve >= 0.3' });
 

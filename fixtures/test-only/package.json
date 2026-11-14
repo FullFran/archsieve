@@ -1,0 +1,6 @@
+{
+  "name": "test-only-app",
+  "main": "src/index.mjs",
+  "bin": { "tool": "src/cli.mjs" },
+  "exports": { ".": "./src/index.mjs", "./pub": "./src/pub/public.mjs" }
+}

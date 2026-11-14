@@ -119,3 +119,15 @@ test('S2 affected: every unresolved specifier of a file is checked, not only the
     { reason: 'unresolved-import', file: 'main.mjs', detail: './gen/zzz.mjs' },
   ]);
 });
+
+test('S2 affected: only a skipped import-graph analysis makes the result blind', (t) => {
+  const snapFile = scanTo(t, fixture('test-split'), ['--go', 'none']);
+  const snap = readJson(snapFile);
+  snap.analyses.push(
+    { tool: 'go list', scope: 'svc', status: 'skipped', note: 'go: command not found' },
+    { tool: 'git log', scope: '90d', status: 'skipped', note: 'not a git checkout' },
+  );
+  writeFileSync(snapFile, JSON.stringify(snap));
+  const d = affected(snapFile, ['--changed', 'lib/src/core.mjs']);
+  assert.deepEqual(d.blind, [{ reason: 'analysis-skipped', detail: 'go list (svc): go: command not found' }]);
+});
