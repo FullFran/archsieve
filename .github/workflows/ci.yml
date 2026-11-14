@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          cache: false
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - name: Demo is reproducible
+        shell: bash
+        run: |
+          out=$(mktemp -d)
+          bash scripts/demo.sh "$out"
+          # Commit SHAs differ between runs by design; everything else must match byte for byte.
+          norm() { sed -E 's/[0-9a-f]{40}/<sha>/g; s/@[0-9a-f]{10}/@<sha>/g' "$1"; }
+          for f in before.json after.json diff.json diff.md nest-compare.mmd files-compare.mmd files-after.dot; do
+            diff -u <(norm "examples/nest-shop/$f") <(norm "$out/$f")
+          done
