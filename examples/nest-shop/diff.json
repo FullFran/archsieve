@@ -3,12 +3,12 @@
   "kind": "archsieve-diff",
   "before": {
     "name": "before",
-    "commit": "d6353d5c87fec0aeb654e199b4ce05d33410d63a",
+    "commit": "854728fa9ad7112655475f10e1ab489ddd4de9f9",
     "dirty": false
   },
   "after": {
     "name": "after",
-    "commit": "d6353d5c87fec0aeb654e199b4ce05d33410d63a",
+    "commit": "854728fa9ad7112655475f10e1ab489ddd4de9f9",
     "dirty": false
   },
   "warnings": [],

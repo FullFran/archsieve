@@ -3,7 +3,7 @@
   "kind": "archsieve-snapshot",
   "subject": {
     "name": "before",
-    "commit": "d6353d5c87fec0aeb654e199b4ce05d33410d63a",
+    "commit": "854728fa9ad7112655475f10e1ab489ddd4de9f9",
     "dirty": false
   },
   "tools": [
@@ -42,9 +42,9 @@
     },
     {
       "tool": "archsieve patterns",
-      "scope": "child-process calls",
+      "scope": "child-process and sidecar calls",
       "status": "ok",
-      "note": "0 runtime links, 0 call sites to programs outside the repository, 0 unresolved; 0 of 6 production source files name a child-process module"
+      "note": "0 runtime links, 0 call sites to programs outside the repository, 0 unresolved; read 0 of 6 production JS/TS files and 0 of 0 Rust files that name a child-process API"
     }
   ],
   "nodes": [
@@ -415,6 +415,6 @@
     "Static import graph only: no runtime calls, network/IPC/queue/event links, reflection or computed dynamic imports. Unresolvable imports are listed as unknown findings, not guessed.",
     "Units come from manifests read as data (package.json, Cargo targets via cargo metadata, go.mod and Go main packages, tauri.conf.json). Links between units at runtime (HTTP, IPC, child processes) are not visible statically.",
     "NestJS DI graph as registered by Nest in preview mode: providers are not instantiated, so factory/value providers and anything resolved via ModuleRef/request scope at runtime is not visible.",
-    "Runtime links from call sites are read line by line, not parsed (ADR 0006): a child-process call counts only when its program is a string literal or a same-file const, and it is matched to a container by path or bin name. Calls built at runtime are unknown findings; HTTP, IPC and queues are not covered."
+    "Runtime links from call sites are read line by line, not parsed (ADR 0006): a child-process call (JS/TS spawn, execFile, fork, execa; Rust Command::new; Tauri sidecars) counts only when its program is a string literal or a same-file constant, and it is matched to a container by path or bin name. Calls built at runtime are unknown findings; HTTP, IPC and queues are not covered."
   ]
 }
