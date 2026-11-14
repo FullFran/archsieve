@@ -1,6 +1,6 @@
 # ADR 0004: Container level (C4 level 2): observed units, a declared model, and the gap between them
 
-Status: proposed · Date: 2026-11-14
+Status: accepted · Date: 2026-11-14
 
 ## Context
 
