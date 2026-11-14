@@ -46,7 +46,8 @@ the test share, e.g. "imports x152 (test x148)". --no-tests (render, diff) leave
 A production file that only tests (or other such files) import, and that nothing runs by path, is a test-only-module
 signal, one per retired folder. Entry points: package.json main/module/browser/bin/exports, --entry-globs, node-like
 commands in package.json scripts, Dockerfiles, systemd units, Procfiles, .sh/.ps1 scripts and workflow run: steps,
-and files spawned by path; the snapshot's suppressed array says which candidate each one kept out, and why.
+and files spawned by path; the snapshot's suppressed array says which candidate each one kept out, and why. Code that
+only test-only code imports (no test directly) is test-only-dependency; entry points are never no-orphans findings.
 
 affected: JSON with the files that import the changed ones directly or indirectly (reverse closure, changed files
 included), the test files among them, and "blind": every reason the answer may be incomplete (changed files not in
