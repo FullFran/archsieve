@@ -59,6 +59,19 @@ node bin/archsieve.mjs render /tmp/as/now.json --depth 1 > /tmp/as/components.mm
 
 ![Nest DI compared](examples/nest-shop/nest-compare.svg)
 
+### Reading a diagram
+
+| Arrow | Meaning |
+|---|---|
+| `A --> B` labelled `imports` | A imports B with a static import: B must be loaded for A to run |
+| `A --> B` labelled `lazy` | A loads B with a dynamic `import()` |
+| `A -.-> B` labelled `type-only` | A only uses B's types; the import is erased at compile time |
+| `A -.-> B` labelled `imports` (Nest view) | Nest module A imports module B |
+| `A --> B` labelled `injects` (Nest view) | Nest class A receives B through dependency injection |
+| `x3` after a label | in the components view, the arrow groups 3 file-level imports of that kind |
+
+Boxes are blue for code, yellow for npm packages and purple for Nest modules. In a compared view, green marks what was added and red what was removed.
+
 ## Supported today
 
 | Stack | Analyzer | Notes |

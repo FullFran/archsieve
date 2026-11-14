@@ -1,5 +1,5 @@
 ---
-title: after@d30806debc (files, compared)
+title: after@231bbf08d9 (files, compared)
 ---
 flowchart LR
   n0["src/app.module.ts"]:::code
@@ -10,22 +10,22 @@ flowchart LR
   n5["src/users/users.controller.ts"]:::code
   n6["src/users/users.module.ts"]:::code
   n7["src/users/users.service.ts"]:::code
-  n0 --> n1
-  n0 --> n6
-  n1 --> n2
-  n1 --> n6
-  n2 --> n7
-  n3 --> n4
-  n3 --> n7
-  n4 --> n7
-  n5 --> n7
-  n6 --> n1
-  n6 --> n3
-  n6 --> n4
-  n6 --> n5
-  n6 --> n7
-  n7 --> n2
-  n7 --> n4
+  n0 -->|"imports"| n1
+  n0 -->|"imports"| n6
+  n1 -->|"imports"| n2
+  n1 -->|"imports"| n6
+  n2 -->|"imports"| n7
+  n3 -.->|"type-only"| n4
+  n3 -.->|"type-only"| n7
+  n4 -.->|"type-only"| n7
+  n5 -.->|"type-only"| n7
+  n6 -->|"imports"| n1
+  n6 -->|"imports"| n3
+  n6 -->|"imports"| n4
+  n6 -->|"imports"| n5
+  n6 -->|"imports"| n7
+  n7 -->|"imports"| n2
+  n7 -->|"imports"| n4
   linkStyle default stroke:#8c959f,stroke-width:1.5px
   linkStyle 5 stroke:#2da44e,stroke-width:3px
   linkStyle 6 stroke:#2da44e,stroke-width:3px

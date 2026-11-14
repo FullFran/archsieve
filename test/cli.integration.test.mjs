@@ -62,6 +62,20 @@ test('render: compared views mark added elements and stay deterministic', (t) =>
   assert.match(dot.stdout, /^digraph archsieve \{/);
 });
 
+test('render: every arrow says what relation it is, and type-only imports are dashed', (t) => {
+  const a = scanNest(t, 'after');
+  const files = cli(['render', a.file, '--view', 'files']).stdout;
+  const id = (label) => new RegExp(`^ {2}(n\\d+)\\["${label.replace(/[./]/g, '\\$&')}"\\]`, 'm').exec(files)[1];
+  const ctrl = id('src/users/users.controller.ts'), svc = id('src/users/users.service.ts'), mod = id('src/users/users.module.ts');
+  assert.match(files, new RegExp(`^ {2}${ctrl} -\\.->\\|"type-only"\\| ${svc}$`, 'm'), 'type-only import: dashed, labelled');
+  assert.match(files, new RegExp(`^ {2}${mod} -->\\|"imports"\\| ${ctrl}$`, 'm'), 'runtime import: solid, labelled');
+  const comps = cli(['render', a.file, '--view', 'components', '--depth', '3']).stdout;
+  assert.match(comps, /-\.->\|"type-only x2"\|/, 'aggregated arrows count their imports by relation');
+  assert.doesNotMatch(comps, /\|"\d+"\|/, 'no bare numbers');
+  const dot = cli(['render', a.file, '--view', 'files', '--format', 'dot']).stdout;
+  assert.match(dot, /users\.controller\.ts" -> "src\/users\/users\.service\.ts" \[style=dashed, label="type-only"\]/);
+});
+
 test('render: plain Mermaid views carry their own colours so they read on light and dark themes', (t) => {
   const a = scanNest(t, 'after');
   const files = cli(['render', a.file, '--view', 'files', '--externals']).stdout;
