@@ -7,7 +7,7 @@
   "required": ["schemaVersion", "kind", "subject", "tools", "analyses", "nodes", "edges", "findings", "limitations"],
   "additionalProperties": false,
   "properties": {
-    "schemaVersion": { "enum": ["0.1", "0.2", "0.3", "0.4"] },
+    "schemaVersion": { "enum": ["0.1", "0.2", "0.3", "0.4", "0.5"] },
     "kind": { "const": "archsieve-snapshot" },
     "subject": { "$ref": "#/$defs/subject" },
     "tools": { "type": "array", "items": { "type": "object", "required": ["name", "version"], "properties": { "name": { "type": "string" }, "version": { "type": "string" } }, "additionalProperties": false } },
@@ -27,6 +27,16 @@
       "type": "object", "required": ["id", "title"], "additionalProperties": false,
       "properties": { "id": { "type": "string" }, "title": { "type": "string" }, "technology": { "type": "string" }, "parent": { "type": "string" } }
     },
+    "facts": {
+      "type": "object", "required": ["files", "lines", "languages", "manifests", "toolchains"], "additionalProperties": false,
+      "description": "Container facts, never a score: files and lines per language (lockfiles left out; binary files and files over 4 MB count as files with no lines), manifests and lockfiles with declared dependency counts (absent: not counted), toolchains with the first file that implies each.",
+      "properties": {
+        "files": { "type": "integer", "minimum": 0 }, "lines": { "type": "integer", "minimum": 0 },
+        "languages": { "type": "object", "additionalProperties": { "type": "object", "required": ["files", "lines"], "additionalProperties": false, "properties": { "files": { "type": "integer", "minimum": 1 }, "lines": { "type": "integer", "minimum": 0 } } } },
+        "manifests": { "type": "array", "items": { "type": "object", "required": ["file", "kind"], "additionalProperties": false, "properties": { "file": { "type": "string" }, "kind": { "type": "string" }, "dependencies": { "type": "integer", "minimum": 0 }, "devDependencies": { "type": "integer", "minimum": 0 }, "indirect": { "type": "integer", "minimum": 0 } } } },
+        "toolchains": { "type": "array", "items": { "type": "object", "required": ["name", "file"], "additionalProperties": false, "properties": { "name": { "type": "string" }, "file": { "type": "string" } } } }
+      }
+    },
     "evidence": {
       "type": "object", "required": ["tool"], "additionalProperties": false,
       "description": "Provenance: which tool reported it, and the file/specifier when the tool reports one. Line numbers are never invented.",
@@ -43,6 +53,7 @@
         "file": { "type": "string" }, "module": { "type": "string" }, "token": { "type": "string" },
         "exported": { "type": "boolean" }, "scope": { "type": "integer" },
         "churn": { "type": "integer", "minimum": 1, "description": "Commits touching it in the --history window (git log). Absent: not scanned with --history, or no commit in the window." },
+        "facts": { "$ref": "#/$defs/facts" },
         "test": { "const": true, "description": "The path matches a test glob (recorded in analyses, tool 'test globs'). Absent means production." },
         "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } }
       },

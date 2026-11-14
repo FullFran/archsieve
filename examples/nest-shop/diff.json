@@ -1,14 +1,14 @@
 {
-  "schemaVersion": "0.4",
+  "schemaVersion": "0.5",
   "kind": "archsieve-diff",
   "before": {
     "name": "before",
-    "commit": "c71936e4dfdfef8d04f7ca2c4c941b230e1740e6",
+    "commit": "ec1f38224d2861909a4a6535c64ab4a3539bfbb8",
     "dirty": false
   },
   "after": {
     "name": "after",
-    "commit": "c71936e4dfdfef8d04f7ca2c4c941b230e1740e6",
+    "commit": "ec1f38224d2861909a4a6535c64ab4a3539bfbb8",
     "dirty": false
   },
   "warnings": [],
@@ -383,5 +383,26 @@
       }
     ],
     "resolved": []
-  }
+  },
+  "containerFacts": [
+    {
+      "id": "container:.",
+      "files": {
+        "before": 8,
+        "after": 10
+      },
+      "lines": {
+        "before": 79,
+        "after": 112
+      },
+      "dependencies": {
+        "before": 0,
+        "after": 0
+      },
+      "toolchains": {
+        "added": [],
+        "removed": []
+      }
+    }
+  ]
 }

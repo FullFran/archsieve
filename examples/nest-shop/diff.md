@@ -1,4 +1,4 @@
-# ArchSieve diff: before@c71936e4df -> after@c71936e4df
+# ArchSieve diff: before@ec1f38224d -> after@ec1f38224d
 
 ## Structure (observed counts)
 
@@ -17,6 +17,12 @@
 ## Component dependencies (directories at depth 2)
 
 - NEW dependency `src/users` -> `src/orders` (2 file import(s))
+
+## Container facts
+
+| Container | Files | Lines | Dependencies | Toolchains |
+|---|---:|---:|---:|---|
+| . | 10 (+2) | 112 (+33) | 0 | no change |
 
 ## New findings
 
