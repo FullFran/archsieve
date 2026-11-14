@@ -6,6 +6,7 @@ import { diff, toMarkdown } from '../src/diff.mjs';
 import { buildDiagram, toMarkdownView, toMermaid, toDot } from '../src/render.mjs';
 import { validate } from '../src/validate.mjs';
 import { DEFAULT_TEST_GLOBS } from '../src/tests.mjs';
+import { affected } from '../src/affected.mjs';
 
 const USAGE = `archsieve: architecture evidence for coding agents (V0, experimental)
 
@@ -17,7 +18,8 @@ Usage:
   archsieve render <snapshot.json> [--view components|files|nest|containers] [--depth N] [--format mermaid|dot|md]
                        [--compare <before.json>] [--externals] [--within <dir>] [--focus <id>] [--no-tests]
                        [--max-nodes N (default 40)] [--max-edges N (default 100)] [-o file]
-  archsieve validate <snapshot-or-diff.json>
+  archsieve affected <snapshot.json> (--changed <file> ... | --base <git-ref> [--repo <dir>]) [--ignore <glob,...>] [-o file]
+  archsieve validate <snapshot-or-diff-or-affected.json>
 
 render: --format md adds title, concern, scope line and legend. --within zooms into a folder (outside neighbours become
 dashed boundary boxes); --focus shows one element with its direct dependencies and dependents. Over budget, components
@@ -26,6 +28,11 @@ reduce --depth; files and nest exit 2. 0 disables a budget.
 Tests: scan marks files matching --test-globs (default: ${DEFAULT_TEST_GLOBS.join(', ')}) as test; labels show
 the test share, e.g. "imports x152 (test x148)". --no-tests (render, diff) leaves imports from test files out.
 
+affected: JSON with the files that import the changed ones directly or indirectly (reverse closure, changed files
+included), the test files among them, and "blind": every reason the answer may be incomplete (changed files not in
+the graph, unresolved imports that may point into it, skipped analyses, a stale snapshot). Run everything when blind
+is not empty. --base reads git diff --name-only <ref> in --repo (default: current directory).
+
 Exit codes: 0 ok, 1 --fail-on threshold reached or invalid document, 2 usage or tool error.
 --nest-entry EXECUTES the target's module top-level code (providers are not instantiated). Use only on trusted code.`;
 
@@ -33,6 +40,7 @@ const OPTIONS = {
   output: { type: 'string', short: 'o' }, ref: { type: 'string' },
   paths: { type: 'string' }, exclude: { type: 'string' }, 'ts-config': { type: 'string' },
   'test-globs': { type: 'string' }, 'no-tests': { type: 'boolean' },
+  changed: { type: 'string', multiple: true }, base: { type: 'string' }, repo: { type: 'string' }, ignore: { type: 'string' },
   'no-js': { type: 'boolean' }, 'no-units': { type: 'boolean' }, model: { type: 'string' }, go: { type: 'string' },
   'nest-entry': { type: 'string' }, 'nest-export': { type: 'string' },
   format: { type: 'string' }, 'fail-on': { type: 'string' },
@@ -90,6 +98,15 @@ function main(argv) {
         before: o.compare ? readJson(o.compare) : null, noTests: !!o['no-tests'],
       });
       out(format === 'md' ? toMarkdownView(d) : format === 'dot' ? toDot(d.projection, { title: d.title }) : toMermaid(d.projection, { title: d.title }), o.output);
+      return 0;
+    }
+    case 'affected': {
+      if (args.length < 1) usageError('affected needs <snapshot.json>');
+      const changed = [...(o.changed ?? []), ...args.slice(1)];
+      if (!changed.length && !o.base) usageError('affected needs --changed <file> ... or --base <git-ref>');
+      const d = affected(readJson(args[0]), { changed, base: o.base ?? null, repo: o.repo ?? '.', ignore: o.ignore?.split(',').map((g) => g.trim()).filter(Boolean) ?? [] });
+      out(`${JSON.stringify(d, null, 2)}\n`, o.output);
+      process.stderr.write(`archsieve: ${d.files.length} affected files, ${d.tests.length} tests; blind: ${d.blind.length}\n`);
       return 0;
     }
     case 'validate': {

@@ -19,6 +19,7 @@ repo or commit ──► existing analyzers ──► snapshot.json ──► di
 - **scan**: runs existing analyzers and normalizes their output into one JSON snapshot. Every node and edge records which tool reported it.
 - **diff**: compares two snapshots: nodes, edges, component-level dependencies and findings that are new or resolved. `--fail-on error` turns it into a CI gate.
 - **render**: Mermaid, DOT or Markdown views (containers, components, files, NestJS DI), optionally coloured against a previous snapshot. Each diagram has a title, keeps to a budget of boxes and arrows (`--max-nodes`, `--max-edges`), and can zoom into a folder (`--within`) or one element (`--focus`). `--format md` adds the concern, what is shown out of what, and a legend.
+- **affected**: which files and tests depend on a set of changed files (`--changed <file> ...` or `--base <git-ref>`): the reverse closure over the snapshot's imports, the test files inside it, and `blind`, every reason the answer may be incomplete (changed files outside the graph such as configs, lockfiles or data; unresolved imports that may point into the closure; skipped analyses; a snapshot from another commit). A pre-push hook can run `tests` and fall back to the full suite when `blind` is not empty. No runner integration and no prediction. `--ignore '**/*.md'` drops changed files the caller knows are irrelevant.
 - **validate**: checks documents against the JSON Schemas in `schema/`.
 - **tests vs production**: scan marks files matching test globs (`--test-globs`, default `**/test/**`, `**/tests/**`, `**/__tests__/**`, `**/*.test.*`, `**/*.spec.*`, `**/*_test.*`) with `test: true`. Container and component arrows show the test share (`imports x152 (test x148)`), and `render --no-tests` / `diff --no-tests` leave imports from test files out, so a production coupling change is not buried under test helpers. The mark is a path convention, not proof.
 
@@ -45,6 +46,7 @@ node bin/archsieve.mjs scan ../my-repo -o /tmp/as/now.json
 node bin/archsieve.mjs scan ../my-repo --ref main -o /tmp/as/main.json
 node bin/archsieve.mjs diff /tmp/as/main.json /tmp/as/now.json --format md
 node bin/archsieve.mjs render /tmp/as/now.json --depth 1 > /tmp/as/components.mmd
+node bin/archsieve.mjs affected /tmp/as/now.json --base origin/main --repo ../my-repo   # files, tests, blind
 ```
 
 `npm link` puts `archsieve` on your PATH. To use it as a dev dependency of another project, pin a tag:
