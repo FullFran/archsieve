@@ -1,0 +1,29 @@
+digraph archsieve {
+  rankdir=LR;
+  node [shape=box, fontname="Helvetica"];
+  label="after@71a35629d9 (files)"; labelloc=t;
+  "src/app.module.ts" [label="src/app.module.ts"];
+  "src/orders/orders.module.ts" [label="src/orders/orders.module.ts"];
+  "src/orders/orders.service.ts" [label="src/orders/orders.service.ts"];
+  "src/users/repository/in-memory-users.repository.ts" [label="src/users/repository/in-memory-users.repository.ts"];
+  "src/users/repository/users.repository.ts" [label="src/users/repository/users.repository.ts"];
+  "src/users/users.controller.ts" [label="src/users/users.controller.ts"];
+  "src/users/users.module.ts" [label="src/users/users.module.ts"];
+  "src/users/users.service.ts" [label="src/users/users.service.ts"];
+  "src/app.module.ts" -> "src/orders/orders.module.ts";
+  "src/app.module.ts" -> "src/users/users.module.ts";
+  "src/orders/orders.module.ts" -> "src/orders/orders.service.ts";
+  "src/orders/orders.module.ts" -> "src/users/users.module.ts";
+  "src/orders/orders.service.ts" -> "src/users/users.service.ts";
+  "src/users/repository/in-memory-users.repository.ts" -> "src/users/repository/users.repository.ts";
+  "src/users/repository/in-memory-users.repository.ts" -> "src/users/users.service.ts";
+  "src/users/repository/users.repository.ts" -> "src/users/users.service.ts";
+  "src/users/users.controller.ts" -> "src/users/users.service.ts";
+  "src/users/users.module.ts" -> "src/orders/orders.module.ts";
+  "src/users/users.module.ts" -> "src/users/repository/in-memory-users.repository.ts";
+  "src/users/users.module.ts" -> "src/users/repository/users.repository.ts";
+  "src/users/users.module.ts" -> "src/users/users.controller.ts";
+  "src/users/users.module.ts" -> "src/users/users.service.ts";
+  "src/users/users.service.ts" -> "src/orders/orders.service.ts";
+  "src/users/users.service.ts" -> "src/users/repository/users.repository.ts";
+}

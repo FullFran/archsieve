@@ -1,0 +1,38 @@
+---
+title: after@71a35629d9 (files, compared)
+---
+flowchart LR
+  n0["src/app.module.ts"]
+  n1["src/orders/orders.module.ts"]
+  n2["src/orders/orders.service.ts"]
+  n3["src/users/repository/in-memory-users.repository.ts"]:::added
+  n4["src/users/repository/users.repository.ts"]:::added
+  n5["src/users/users.controller.ts"]
+  n6["src/users/users.module.ts"]
+  n7["src/users/users.service.ts"]
+  n0 --> n1
+  n0 --> n6
+  n1 --> n2
+  n1 --> n6
+  n2 --> n7
+  n3 --> n4
+  n3 --> n7
+  n4 --> n7
+  n5 --> n7
+  n6 --> n1
+  n6 --> n3
+  n6 --> n4
+  n6 --> n5
+  n6 --> n7
+  n7 --> n2
+  n7 --> n4
+  linkStyle 5 stroke:#2da44e,stroke-width:3px
+  linkStyle 6 stroke:#2da44e,stroke-width:3px
+  linkStyle 7 stroke:#2da44e,stroke-width:3px
+  linkStyle 9 stroke:#2da44e,stroke-width:3px
+  linkStyle 10 stroke:#2da44e,stroke-width:3px
+  linkStyle 11 stroke:#2da44e,stroke-width:3px
+  linkStyle 14 stroke:#2da44e,stroke-width:3px
+  linkStyle 15 stroke:#2da44e,stroke-width:3px
+  classDef added fill:#dafbe1,stroke:#2da44e,stroke-width:2px
+  classDef removed fill:#ffebe9,stroke:#cf222e,stroke-dasharray:4 3

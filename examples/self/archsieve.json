@@ -1,0 +1,351 @@
+{
+  "schemaVersion": "0.1",
+  "kind": "archsieve-snapshot",
+  "subject": {
+    "name": "ArchSieve",
+    "commit": "71a35629d99f06fa56febd40ee5f793f79f48e43",
+    "dirty": false
+  },
+  "tools": [
+    {
+      "name": "dependency-cruiser",
+      "version": "18.7.2"
+    }
+  ],
+  "analyses": [
+    {
+      "tool": "dependency-cruiser",
+      "scope": ".",
+      "status": "ok"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "bin/archsieve.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "npm:ajv",
+      "kind": "external-package",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "src/adapters/depcruise.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "src/adapters/golist.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "src/adapters/nest-probe.cjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "src/adapters/nest.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "src/diff.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "src/render.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "src/scan.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "src/util.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "src/validate.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "test/cli.integration.test.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "test/helpers.mjs",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "source": "bin/archsieve.mjs",
+      "target": "src/diff.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "bin/archsieve.mjs",
+          "detail": "../src/diff.mjs"
+        }
+      ]
+    },
+    {
+      "source": "bin/archsieve.mjs",
+      "target": "src/render.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "bin/archsieve.mjs",
+          "detail": "../src/render.mjs"
+        }
+      ]
+    },
+    {
+      "source": "bin/archsieve.mjs",
+      "target": "src/scan.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "bin/archsieve.mjs",
+          "detail": "../src/scan.mjs"
+        }
+      ]
+    },
+    {
+      "source": "bin/archsieve.mjs",
+      "target": "src/validate.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "bin/archsieve.mjs",
+          "detail": "../src/validate.mjs"
+        }
+      ]
+    },
+    {
+      "source": "src/adapters/depcruise.mjs",
+      "target": "src/util.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/adapters/depcruise.mjs",
+          "detail": "../util.mjs"
+        }
+      ]
+    },
+    {
+      "source": "src/adapters/golist.mjs",
+      "target": "src/util.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/adapters/golist.mjs",
+          "detail": "../util.mjs"
+        }
+      ]
+    },
+    {
+      "source": "src/adapters/nest.mjs",
+      "target": "src/util.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/adapters/nest.mjs",
+          "detail": "../util.mjs"
+        }
+      ]
+    },
+    {
+      "source": "src/diff.mjs",
+      "target": "src/render.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/diff.mjs",
+          "detail": "./render.mjs"
+        }
+      ]
+    },
+    {
+      "source": "src/diff.mjs",
+      "target": "src/scan.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/diff.mjs",
+          "detail": "./scan.mjs"
+        }
+      ]
+    },
+    {
+      "source": "src/diff.mjs",
+      "target": "src/util.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/diff.mjs",
+          "detail": "./util.mjs"
+        }
+      ]
+    },
+    {
+      "source": "src/render.mjs",
+      "target": "src/util.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/render.mjs",
+          "detail": "./util.mjs"
+        }
+      ]
+    },
+    {
+      "source": "src/scan.mjs",
+      "target": "src/adapters/depcruise.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/scan.mjs",
+          "detail": "./adapters/depcruise.mjs"
+        }
+      ]
+    },
+    {
+      "source": "src/scan.mjs",
+      "target": "src/adapters/golist.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/scan.mjs",
+          "detail": "./adapters/golist.mjs"
+        }
+      ]
+    },
+    {
+      "source": "src/scan.mjs",
+      "target": "src/adapters/nest.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/scan.mjs",
+          "detail": "./adapters/nest.mjs"
+        }
+      ]
+    },
+    {
+      "source": "src/scan.mjs",
+      "target": "src/util.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/scan.mjs",
+          "detail": "./util.mjs"
+        }
+      ]
+    },
+    {
+      "source": "src/validate.mjs",
+      "target": "npm:ajv",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/validate.mjs",
+          "detail": "ajv/dist/2020.js"
+        }
+      ]
+    },
+    {
+      "source": "test/cli.integration.test.mjs",
+      "target": "test/helpers.mjs",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "test/cli.integration.test.mjs",
+          "detail": "./helpers.mjs"
+        }
+      ]
+    }
+  ],
+  "findings": [],
+  "limitations": [
+    "Static import graph only: no runtime calls, network/IPC/queue/event links, reflection or computed dynamic imports. Unresolvable imports are listed as unknown findings, not guessed."
+  ]
+}

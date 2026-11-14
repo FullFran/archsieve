@@ -1,0 +1,27 @@
+---
+title: after@71a35629d9 (nest, compared)
+---
+flowchart LR
+  n1[["AppModule"]]
+  subgraph n2["OrdersModule"]
+    n4["OrdersService"]
+  end
+  subgraph n3["UsersModule"]
+    n0["UsersController"]
+    n5["CLOCK"]:::added
+    n6["InMemoryUsersRepository"]:::added
+    n7["UsersService"]
+  end
+  n0 -->|"injects"| n7
+  n1 -.->|"imports"| n2
+  n1 -.->|"imports"| n3
+  n2 -.->|"imports"| n3
+  n3 -.->|"imports"| n2
+  n4 -->|"injects"| n7
+  n7 -->|"injects"| n4
+  n7 -->|"injects"| n6
+  linkStyle 4 stroke:#2da44e,stroke-width:3px
+  linkStyle 6 stroke:#2da44e,stroke-width:3px
+  linkStyle 7 stroke:#2da44e,stroke-width:3px
+  classDef added fill:#dafbe1,stroke:#2da44e,stroke-width:2px
+  classDef removed fill:#ffebe9,stroke:#cf222e,stroke-dasharray:4 3

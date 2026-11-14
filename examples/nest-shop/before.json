@@ -1,0 +1,384 @@
+{
+  "schemaVersion": "0.1",
+  "kind": "archsieve-snapshot",
+  "subject": {
+    "name": "before",
+    "commit": "71a35629d99f06fa56febd40ee5f793f79f48e43",
+    "dirty": false
+  },
+  "tools": [
+    {
+      "name": "@nestjs/core",
+      "version": "11.2.10"
+    },
+    {
+      "name": "dependency-cruiser",
+      "version": "18.7.2"
+    }
+  ],
+  "analyses": [
+    {
+      "tool": "dependency-cruiser",
+      "scope": ".",
+      "status": "ok"
+    },
+    {
+      "tool": "@nestjs/core SerializedGraph",
+      "scope": "dist/app.module.js",
+      "status": "ok",
+      "note": "preview mode; module top-level code executed"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "nest:controller:UsersModule/UsersController",
+      "kind": "nest-controller",
+      "evidence": [
+        {
+          "tool": "@nestjs/core SerializedGraph (preview)"
+        }
+      ],
+      "module": "nest:module:UsersModule"
+    },
+    {
+      "id": "nest:module:AppModule",
+      "kind": "nest-module",
+      "evidence": [
+        {
+          "tool": "@nestjs/core SerializedGraph (preview)"
+        }
+      ]
+    },
+    {
+      "id": "nest:module:OrdersModule",
+      "kind": "nest-module",
+      "evidence": [
+        {
+          "tool": "@nestjs/core SerializedGraph (preview)"
+        }
+      ]
+    },
+    {
+      "id": "nest:module:UsersModule",
+      "kind": "nest-module",
+      "evidence": [
+        {
+          "tool": "@nestjs/core SerializedGraph (preview)"
+        }
+      ]
+    },
+    {
+      "id": "nest:provider:OrdersModule/OrdersService",
+      "kind": "nest-provider",
+      "evidence": [
+        {
+          "tool": "@nestjs/core SerializedGraph (preview)"
+        }
+      ],
+      "module": "nest:module:OrdersModule"
+    },
+    {
+      "id": "nest:provider:UsersModule/UsersService",
+      "kind": "nest-provider",
+      "evidence": [
+        {
+          "tool": "@nestjs/core SerializedGraph (preview)"
+        }
+      ],
+      "module": "nest:module:UsersModule",
+      "exported": true
+    },
+    {
+      "id": "npm:@nestjs/common",
+      "kind": "external-package",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "src/app.module.ts",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "src/orders/orders.module.ts",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "src/orders/orders.service.ts",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "src/users/users.controller.ts",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "src/users/users.module.ts",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    },
+    {
+      "id": "src/users/users.service.ts",
+      "kind": "file",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "source": "nest:controller:UsersModule/UsersController",
+      "target": "nest:provider:UsersModule/UsersService",
+      "kind": "nest-injects",
+      "injection": "constructor",
+      "evidence": [
+        {
+          "tool": "@nestjs/core SerializedGraph (preview)"
+        }
+      ]
+    },
+    {
+      "source": "nest:module:AppModule",
+      "target": "nest:module:OrdersModule",
+      "kind": "nest-imports",
+      "evidence": [
+        {
+          "tool": "@nestjs/core SerializedGraph (preview)"
+        }
+      ]
+    },
+    {
+      "source": "nest:module:AppModule",
+      "target": "nest:module:UsersModule",
+      "kind": "nest-imports",
+      "evidence": [
+        {
+          "tool": "@nestjs/core SerializedGraph (preview)"
+        }
+      ]
+    },
+    {
+      "source": "nest:module:OrdersModule",
+      "target": "nest:module:UsersModule",
+      "kind": "nest-imports",
+      "evidence": [
+        {
+          "tool": "@nestjs/core SerializedGraph (preview)"
+        }
+      ]
+    },
+    {
+      "source": "nest:provider:OrdersModule/OrdersService",
+      "target": "nest:provider:UsersModule/UsersService",
+      "kind": "nest-injects",
+      "injection": "constructor",
+      "evidence": [
+        {
+          "tool": "@nestjs/core SerializedGraph (preview)"
+        }
+      ]
+    },
+    {
+      "source": "src/app.module.ts",
+      "target": "npm:@nestjs/common",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/app.module.ts",
+          "detail": "@nestjs/common"
+        }
+      ]
+    },
+    {
+      "source": "src/app.module.ts",
+      "target": "src/orders/orders.module.ts",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/app.module.ts",
+          "detail": "./orders/orders.module"
+        }
+      ]
+    },
+    {
+      "source": "src/app.module.ts",
+      "target": "src/users/users.module.ts",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/app.module.ts",
+          "detail": "./users/users.module"
+        }
+      ]
+    },
+    {
+      "source": "src/orders/orders.module.ts",
+      "target": "npm:@nestjs/common",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/orders/orders.module.ts",
+          "detail": "@nestjs/common"
+        }
+      ]
+    },
+    {
+      "source": "src/orders/orders.module.ts",
+      "target": "src/orders/orders.service.ts",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/orders/orders.module.ts",
+          "detail": "./orders.service"
+        }
+      ]
+    },
+    {
+      "source": "src/orders/orders.module.ts",
+      "target": "src/users/users.module.ts",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/orders/orders.module.ts",
+          "detail": "../users/users.module"
+        }
+      ]
+    },
+    {
+      "source": "src/orders/orders.service.ts",
+      "target": "npm:@nestjs/common",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/orders/orders.service.ts",
+          "detail": "@nestjs/common"
+        }
+      ]
+    },
+    {
+      "source": "src/orders/orders.service.ts",
+      "target": "src/users/users.service.ts",
+      "kind": "imports",
+      "typeOnly": true,
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/orders/orders.service.ts",
+          "detail": "../users/users.service"
+        }
+      ]
+    },
+    {
+      "source": "src/users/users.controller.ts",
+      "target": "npm:@nestjs/common",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/users/users.controller.ts",
+          "detail": "@nestjs/common"
+        }
+      ]
+    },
+    {
+      "source": "src/users/users.controller.ts",
+      "target": "src/users/users.service.ts",
+      "kind": "imports",
+      "typeOnly": true,
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/users/users.controller.ts",
+          "detail": "./users.service"
+        }
+      ]
+    },
+    {
+      "source": "src/users/users.module.ts",
+      "target": "npm:@nestjs/common",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/users/users.module.ts",
+          "detail": "@nestjs/common"
+        }
+      ]
+    },
+    {
+      "source": "src/users/users.module.ts",
+      "target": "src/users/users.controller.ts",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/users/users.module.ts",
+          "detail": "./users.controller"
+        }
+      ]
+    },
+    {
+      "source": "src/users/users.module.ts",
+      "target": "src/users/users.service.ts",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/users/users.module.ts",
+          "detail": "./users.service"
+        }
+      ]
+    },
+    {
+      "source": "src/users/users.service.ts",
+      "target": "npm:@nestjs/common",
+      "kind": "imports",
+      "evidence": [
+        {
+          "tool": "dependency-cruiser",
+          "file": "src/users/users.service.ts",
+          "detail": "@nestjs/common"
+        }
+      ]
+    }
+  ],
+  "findings": [],
+  "limitations": [
+    "Static import graph only: no runtime calls, network/IPC/queue/event links, reflection or computed dynamic imports. Unresolvable imports are listed as unknown findings, not guessed.",
+    "NestJS DI graph as registered by Nest in preview mode: providers are not instantiated, so factory/value providers and anything resolved via ModuleRef/request scope at runtime is not visible."
+  ]
+}

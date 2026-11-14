@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/FullFran/archsieve/schema/snapshot-0.1.json",
+  "title": "ArchSieve snapshot 0.1",
+  "description": "Observed (AS-IS) architecture evidence for one code state. Experimental: stable only within 0.x minor.",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "subject", "tools", "analyses", "nodes", "edges", "findings", "limitations"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": "0.1" },
+    "kind": { "const": "archsieve-snapshot" },
+    "subject": { "$ref": "#/$defs/subject" },
+    "tools": { "type": "array", "items": { "type": "object", "required": ["name", "version"], "properties": { "name": { "type": "string" }, "version": { "type": "string" } }, "additionalProperties": false } },
+    "analyses": { "type": "array", "items": { "type": "object", "required": ["tool", "scope", "status"], "properties": { "tool": { "type": "string" }, "scope": { "type": "string" }, "status": { "enum": ["ok", "skipped", "failed"] }, "note": { "type": "string" } }, "additionalProperties": false } },
+    "nodes": { "type": "array", "items": { "$ref": "#/$defs/node" } },
+    "edges": { "type": "array", "items": { "$ref": "#/$defs/edge" } },
+    "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "limitations": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "subject": {
+      "type": "object", "required": ["name", "commit", "dirty"], "additionalProperties": false,
+      "properties": { "name": { "type": "string" }, "commit": { "type": ["string", "null"] }, "dirty": { "type": ["boolean", "null"] } }
+    },
+    "evidence": {
+      "type": "object", "required": ["tool"], "additionalProperties": false,
+      "description": "Provenance: which tool reported it, and the file/specifier when the tool reports one. Line numbers are never invented.",
+      "properties": { "tool": { "type": "string" }, "file": { "type": "string" }, "detail": { "type": "string" } }
+    },
+    "node": {
+      "type": "object", "required": ["id", "kind", "evidence"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "enum": ["file", "vendored-file", "external-package", "go-package", "nest-module", "nest-provider", "nest-controller", "nest-injectable", "nest-middleware"] },
+        "file": { "type": "string" }, "module": { "type": "string" }, "token": { "type": "string" },
+        "exported": { "type": "boolean" }, "scope": { "type": "integer" },
+        "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } }
+      },
+      "additionalProperties": false
+    },
+    "edge": {
+      "type": "object", "required": ["source", "target", "kind", "evidence"],
+      "properties": {
+        "source": { "type": "string" }, "target": { "type": "string" },
+        "kind": { "enum": ["imports", "nest-imports", "nest-injects"] },
+        "typeOnly": { "const": true }, "dynamic": { "const": true },
+        "injection": { "enum": ["constructor", "property", "decorator"] }, "token": { "type": "string" },
+        "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } }
+      },
+      "additionalProperties": false
+    },
+    "finding": {
+      "type": "object", "required": ["id", "level", "rule", "subjects", "message", "evidence"],
+      "properties": {
+        "id": { "type": "string" },
+        "level": { "enum": ["error", "signal", "unknown"], "description": "error: verifiable from the evidence. signal: heuristic, needs judgement. unknown: not inferable from the available evidence." },
+        "rule": { "type": "string" }, "subjects": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "message": { "type": "string" },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } }
+      },
+      "additionalProperties": false
+    }
+  }
+}

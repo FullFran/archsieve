@@ -1,0 +1,31 @@
+{
+  "name": "archsieve",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Architecture evidence for coding agents. Evidence before abstractions.",
+  "license": "Apache-2.0",
+  "repository": { "type": "git", "url": "git+https://github.com/FullFran/archsieve.git" },
+  "files": ["bin", "src", "schema", "skills", "README.md", "LICENSE"],
+  "type": "module",
+  "bin": {
+    "archsieve": "bin/archsieve.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test --test-concurrency=2 test/*.test.mjs",
+    "demo": "bash scripts/demo.sh"
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "dependency-cruiser": "18.7.2",
+    "typescript": "5.9.3"
+  },
+  "devDependencies": {
+    "@nestjs/common": "11.2.10",
+    "@nestjs/core": "11.2.10",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2"
+  }
+}

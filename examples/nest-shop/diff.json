@@ -1,0 +1,383 @@
+{
+  "schemaVersion": "0.1",
+  "kind": "archsieve-diff",
+  "before": {
+    "name": "before",
+    "commit": "71a35629d99f06fa56febd40ee5f793f79f48e43",
+    "dirty": false
+  },
+  "after": {
+    "name": "after",
+    "commit": "71a35629d99f06fa56febd40ee5f793f79f48e43",
+    "dirty": false
+  },
+  "warnings": [],
+  "summary": {
+    "nodes": {
+      "external-package": {
+        "before": 1,
+        "after": 1
+      },
+      "file": {
+        "before": 6,
+        "after": 8
+      },
+      "nest-controller": {
+        "before": 1,
+        "after": 1
+      },
+      "nest-module": {
+        "before": 3,
+        "after": 3
+      },
+      "nest-provider": {
+        "before": 2,
+        "after": 4
+      }
+    },
+    "edges": {
+      "imports": {
+        "before": 14,
+        "after": 23
+      },
+      "nest-imports": {
+        "before": 3,
+        "after": 4
+      },
+      "nest-injects": {
+        "before": 2,
+        "after": 4
+      }
+    },
+    "newFindings": {
+      "error": 4,
+      "signal": 2,
+      "unknown": 1
+    },
+    "resolvedFindings": {
+      "error": 0,
+      "signal": 0,
+      "unknown": 0
+    }
+  },
+  "components": {
+    "depth": 2,
+    "added": [],
+    "removed": [],
+    "dependencies": {
+      "added": [
+        {
+          "from": "src/users",
+          "to": "src/orders",
+          "fileEdges": 2
+        }
+      ],
+      "removed": []
+    }
+  },
+  "nodes": {
+    "added": [
+      {
+        "id": "nest:provider:UsersModule/CLOCK",
+        "kind": "nest-provider",
+        "evidence": [
+          {
+            "tool": "@nestjs/core SerializedGraph (preview)"
+          }
+        ],
+        "module": "nest:module:UsersModule",
+        "token": "CLOCK"
+      },
+      {
+        "id": "nest:provider:UsersModule/InMemoryUsersRepository",
+        "kind": "nest-provider",
+        "evidence": [
+          {
+            "tool": "@nestjs/core SerializedGraph (preview)"
+          }
+        ],
+        "module": "nest:module:UsersModule",
+        "token": "USERS_REPOSITORY"
+      },
+      {
+        "id": "src/users/repository/in-memory-users.repository.ts",
+        "kind": "file",
+        "evidence": [
+          {
+            "tool": "dependency-cruiser"
+          }
+        ]
+      },
+      {
+        "id": "src/users/repository/users.repository.ts",
+        "kind": "file",
+        "evidence": [
+          {
+            "tool": "dependency-cruiser"
+          }
+        ]
+      }
+    ],
+    "removed": []
+  },
+  "edges": {
+    "added": [
+      {
+        "source": "nest:module:UsersModule",
+        "target": "nest:module:OrdersModule",
+        "kind": "nest-imports",
+        "evidence": [
+          {
+            "tool": "@nestjs/core SerializedGraph (preview)"
+          }
+        ]
+      },
+      {
+        "source": "nest:provider:UsersModule/UsersService",
+        "target": "nest:provider:OrdersModule/OrdersService",
+        "kind": "nest-injects",
+        "injection": "constructor",
+        "evidence": [
+          {
+            "tool": "@nestjs/core SerializedGraph (preview)"
+          }
+        ]
+      },
+      {
+        "source": "nest:provider:UsersModule/UsersService",
+        "target": "nest:provider:UsersModule/InMemoryUsersRepository",
+        "kind": "nest-injects",
+        "injection": "constructor",
+        "token": "USERS_REPOSITORY",
+        "evidence": [
+          {
+            "tool": "@nestjs/core SerializedGraph (preview)"
+          }
+        ]
+      },
+      {
+        "source": "src/users/repository/in-memory-users.repository.ts",
+        "target": "npm:@nestjs/common",
+        "kind": "imports",
+        "evidence": [
+          {
+            "tool": "dependency-cruiser",
+            "file": "src/users/repository/in-memory-users.repository.ts",
+            "detail": "@nestjs/common"
+          }
+        ]
+      },
+      {
+        "source": "src/users/repository/in-memory-users.repository.ts",
+        "target": "src/users/repository/users.repository.ts",
+        "kind": "imports",
+        "typeOnly": true,
+        "evidence": [
+          {
+            "tool": "dependency-cruiser",
+            "file": "src/users/repository/in-memory-users.repository.ts",
+            "detail": "./users.repository"
+          }
+        ]
+      },
+      {
+        "source": "src/users/repository/in-memory-users.repository.ts",
+        "target": "src/users/users.service.ts",
+        "kind": "imports",
+        "typeOnly": true,
+        "evidence": [
+          {
+            "tool": "dependency-cruiser",
+            "file": "src/users/repository/in-memory-users.repository.ts",
+            "detail": "../users.service"
+          }
+        ]
+      },
+      {
+        "source": "src/users/repository/users.repository.ts",
+        "target": "src/users/users.service.ts",
+        "kind": "imports",
+        "typeOnly": true,
+        "evidence": [
+          {
+            "tool": "dependency-cruiser",
+            "file": "src/users/repository/users.repository.ts",
+            "detail": "../users.service"
+          }
+        ]
+      },
+      {
+        "source": "src/users/users.module.ts",
+        "target": "src/orders/orders.module.ts",
+        "kind": "imports",
+        "evidence": [
+          {
+            "tool": "dependency-cruiser",
+            "file": "src/users/users.module.ts",
+            "detail": "../orders/orders.module"
+          }
+        ]
+      },
+      {
+        "source": "src/users/users.module.ts",
+        "target": "src/users/repository/in-memory-users.repository.ts",
+        "kind": "imports",
+        "evidence": [
+          {
+            "tool": "dependency-cruiser",
+            "file": "src/users/users.module.ts",
+            "detail": "./repository/in-memory-users.repository"
+          }
+        ]
+      },
+      {
+        "source": "src/users/users.module.ts",
+        "target": "src/users/repository/users.repository.ts",
+        "kind": "imports",
+        "evidence": [
+          {
+            "tool": "dependency-cruiser",
+            "file": "src/users/users.module.ts",
+            "detail": "./repository/users.repository"
+          }
+        ]
+      },
+      {
+        "source": "src/users/users.service.ts",
+        "target": "src/orders/orders.service.ts",
+        "kind": "imports",
+        "evidence": [
+          {
+            "tool": "dependency-cruiser",
+            "file": "src/users/users.service.ts",
+            "detail": "../orders/orders.service"
+          }
+        ]
+      },
+      {
+        "source": "src/users/users.service.ts",
+        "target": "src/users/repository/users.repository.ts",
+        "kind": "imports",
+        "evidence": [
+          {
+            "tool": "dependency-cruiser",
+            "file": "src/users/users.service.ts",
+            "detail": "./repository/users.repository"
+          }
+        ]
+      }
+    ],
+    "removed": []
+  },
+  "findings": {
+    "new": [
+      {
+        "id": "di-cycle:nest:provider:OrdersModule/OrdersService|nest:provider:UsersModule/UsersService",
+        "level": "error",
+        "rule": "di-cycle",
+        "subjects": [
+          "nest:provider:OrdersModule/OrdersService",
+          "nest:provider:UsersModule/UsersService"
+        ],
+        "message": "Provider injection cycle among nest:provider:OrdersModule/OrdersService, nest:provider:UsersModule/UsersService (resolvable at runtime only through forwardRef).",
+        "evidence": [
+          {
+            "tool": "@nestjs/core SerializedGraph (preview)"
+          }
+        ]
+      },
+      {
+        "id": "module-cycle:nest:module:OrdersModule|nest:module:UsersModule",
+        "level": "error",
+        "rule": "module-cycle",
+        "subjects": [
+          "nest:module:OrdersModule",
+          "nest:module:UsersModule"
+        ],
+        "message": "Module import cycle among nest:module:OrdersModule, nest:module:UsersModule (resolvable at runtime only through forwardRef).",
+        "evidence": [
+          {
+            "tool": "@nestjs/core SerializedGraph (preview)"
+          }
+        ]
+      },
+      {
+        "id": "no-circular:src/orders/orders.module.ts|src/users/users.module.ts",
+        "level": "error",
+        "rule": "no-circular",
+        "subjects": [
+          "src/orders/orders.module.ts",
+          "src/users/users.module.ts"
+        ],
+        "message": "Runtime import cycle: src/orders/orders.module.ts -> src/users/users.module.ts -> src/orders/orders.module.ts",
+        "evidence": [
+          {
+            "tool": "dependency-cruiser",
+            "file": "src/orders/orders.module.ts"
+          }
+        ]
+      },
+      {
+        "id": "no-circular:src/orders/orders.service.ts|src/users/users.service.ts",
+        "level": "error",
+        "rule": "no-circular",
+        "subjects": [
+          "src/orders/orders.service.ts",
+          "src/users/users.service.ts"
+        ],
+        "message": "Runtime import cycle: src/orders/orders.service.ts -> src/users/users.service.ts -> src/orders/orders.service.ts",
+        "evidence": [
+          {
+            "tool": "dependency-cruiser",
+            "file": "src/orders/orders.service.ts"
+          }
+        ]
+      },
+      {
+        "id": "non-class-provider:nest:provider:UsersModule/CLOCK",
+        "level": "unknown",
+        "rule": "non-class-provider",
+        "subjects": [
+          "nest:provider:UsersModule/CLOCK"
+        ],
+        "message": "Provider \"CLOCK\" is a value/factory/alias provider; what it returns and depends on is not visible in the DI graph.",
+        "evidence": [
+          {
+            "tool": "@nestjs/core SerializedGraph (preview)"
+          }
+        ]
+      },
+      {
+        "id": "token-indirection:nest:provider:UsersModule/InMemoryUsersRepository",
+        "level": "signal",
+        "rule": "token-indirection",
+        "subjects": [
+          "nest:provider:UsersModule/InMemoryUsersRepository"
+        ],
+        "message": "InMemoryUsersRepository is bound behind token \"USERS_REPOSITORY\" with 1 binding(s) in this graph. Check that the indirection answers a real need (multiple implementations, test seam, boundary).",
+        "evidence": [
+          {
+            "tool": "@nestjs/core SerializedGraph (preview)"
+          }
+        ]
+      },
+      {
+        "id": "type-only-cycle:src/users/repository/users.repository.ts|src/users/users.service.ts",
+        "level": "signal",
+        "rule": "type-only-cycle",
+        "subjects": [
+          "src/users/repository/users.repository.ts",
+          "src/users/users.service.ts"
+        ],
+        "message": "Cycle exists only through type-only imports (erased at runtime; compile-time coupling): src/users/repository/users.repository.ts -> src/users/users.service.ts -> src/users/repository/users.repository.ts",
+        "evidence": [
+          {
+            "tool": "dependency-cruiser",
+            "file": "src/users/repository/users.repository.ts"
+          }
+        ]
+      }
+    ],
+    "resolved": []
+  }
+}

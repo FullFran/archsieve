@@ -1,0 +1,187 @@
+import { basename, resolve } from 'node:path';
+import { existsSync, statSync, mkdtempSync, rmSync, symlinkSync, readdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { run, byKey, edgeKey } from './util.mjs';
+import { scanDepcruise, DEFAULT_EXCLUDE, VENDOR, VERSION as DC_VERSION } from './adapters/depcruise.mjs';
+import { scanGo, goVersion } from './adapters/golist.mjs';
+import { scanNest } from './adapters/nest.mjs';
+
+export const SCHEMA_VERSION = '0.1';
+
+const LIMITATIONS = {
+  'dependency-cruiser': 'Static import graph only: no runtime calls, network/IPC/queue/event links, reflection or computed dynamic imports. Unresolvable imports are listed as unknown findings, not guessed.',
+  'go list': 'Go package import graph only; standard library omitted; external packages collapsed to host/org/repo. Built with the current GOOS/GOARCH and no build tags, so tagged files may be missing. Rust/Tauri code is not analyzed in V0.',
+  'nest': 'NestJS DI graph as registered by Nest in preview mode: providers are not instantiated, so factory/value providers and anything resolved via ModuleRef/request scope at runtime is not visible.',
+};
+
+function gitInfo(root) {
+  try {
+    const head = run('git', ['rev-parse', 'HEAD'], { cwd: root });
+    if (head.status !== 0) return { commit: null, dirty: null };
+    const st = run('git', ['status', '--porcelain', '--untracked-files=no', '--', '.'], { cwd: root });
+    return { commit: head.stdout.trim(), dirty: st.stdout.trim().length > 0 };
+  } catch {
+    return { commit: null, dirty: null };
+  }
+}
+
+function goModules(root, exclude) {
+  const re = new RegExp(exclude), vendor = new RegExp(VENDOR);
+  const res = run('git', ['ls-files', '--', '*go.mod', 'go.mod'], { cwd: root });
+  // Outside a git checkout (e.g. a --ref export) walk the tree instead.
+  const files = res.status === 0 ? res.stdout.split('\n').filter(Boolean) : findFiles(root, 'go.mod', (r) => !re.test(`${r}/`) && !vendor.test(`${r}/`));
+  return files.map((f) => f.replace(/\/?go\.mod$/, '') || '.').filter((d) => d === '.' || (!re.test(`${d}/`) && !vendor.test(`${d}/`))).sort();
+}
+
+function findFiles(root, name, keep, rel = '', depth = 4) {
+  const out = [];
+  let entries = [];
+  try { entries = readdirSync(join(root, rel), { withFileTypes: true }); } catch { return out; }
+  for (const e of entries) {
+    const r = rel ? `${rel}/${e.name}` : e.name;
+    if (e.isFile() && e.name === name) out.push(r);
+    else if (e.isDirectory() && depth > 0 && e.name !== '.git' && keep(r)) out.push(...findFiles(root, name, keep, r, depth - 1));
+  }
+  return out;
+}
+
+// dependency-cruiser walks the file system and ignores .gitignore. Excluding git-ignored
+// directories keeps local caches/build output out of the graph (same commit -> same graph).
+function gitIgnoredDirs(root) {
+  try {
+    const res = run('git', ['ls-files', '--others', '--ignored', '--exclude-standard', '--directory', '--no-empty-directory'], { cwd: root });
+    if (res.status !== 0) return [];
+    return res.stdout.split('\n').filter((l) => l.endsWith('/')).map((d) => d.slice(0, -1));
+  } catch {
+    return [];
+  }
+}
+
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+export function findingId(f) {
+  return `${f.rule}:${f.subjects.join('|')}`;
+}
+
+// Scan a committed state without touching the working tree: `git archive` (no hooks, no checkout)
+// into a temp dir. Installed node_modules of the working tree are linked read-only so package
+// imports still resolve; that resolution reflects the CURRENT install, not the one at <ref>.
+export function scanRef(target, ref, opts = {}) {
+  const repo = resolve(target);
+  const sha = run('git', ['rev-parse', '--verify', `${ref}^{commit}`], { cwd: repo });
+  if (sha.status !== 0) { const e = new Error(`unknown git ref: ${ref}`); e.code = 'BAD_INPUT'; throw e; }
+  const commit = sha.stdout.trim();
+  const tmp = mkdtempSync(join(tmpdir(), 'archsieve-ref-'));
+  const name = basename(repo);
+  const tree = join(tmp, name);
+  try {
+    const tar = run('git', ['archive', '--format=tar', commit], { cwd: repo, encoding: 'buffer' });
+    if (tar.status !== 0) { const e = new Error(`git archive failed for ${ref}`); e.code = 'TOOL_FAILED'; throw e; }
+    run('mkdir', ['-p', tree]);
+    const x = run('tar', ['-x', '-C', tree], { input: tar.stdout });
+    if (x.status !== 0) { const e = new Error(`tar failed: ${x.stderr}`); e.code = 'TOOL_FAILED'; throw e; }
+    for (const rel of nodeModulesDirs(repo)) {
+      const dst = join(tree, rel);
+      if (existsSync(join(dst, '..')) && !existsSync(dst)) symlinkSync(join(repo, rel), dst);
+    }
+    return scan(tree, { ...opts, subject: { name, commit, dirty: false } });
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+function nodeModulesDirs(repo, depth = 2, rel = '') {
+  const out = [];
+  let entries = [];
+  try { entries = readdirSync(join(repo, rel), { withFileTypes: true }); } catch { return out; }
+  for (const e of entries) {
+    if (!e.isDirectory() || e.name === '.git') continue;
+    const r = rel ? `${rel}/${e.name}` : e.name;
+    if (e.name === 'node_modules') out.push(r);
+    else if (depth > 0 && !new RegExp(DEFAULT_EXCLUDE).test(`${r}/`)) out.push(...nodeModulesDirs(repo, depth - 1, r));
+  }
+  return out;
+}
+
+export function scan(target, opts = {}) {
+  const root = resolve(target);
+  if (!existsSync(root) || !statSync(root).isDirectory()) {
+    const err = new Error(`not a directory: ${target}`);
+    err.code = 'BAD_INPUT';
+    throw err;
+  }
+  const ignored = (opts.subject ? [] : gitIgnoredDirs(root)).filter((d) => !new RegExp(VENDOR).test(`${d}/`));
+  const exclude = [DEFAULT_EXCLUDE, ...(opts.exclude ? [opts.exclude] : []), ...(ignored.length ? [`^(${ignored.map(escapeRe).join('|')})(/|$)`] : [])].join('|');
+  const parts = [], tools = [], analyses = [], limitations = [];
+
+  if (opts.js !== false) {
+    parts.push(scanDepcruise(root, { paths: opts.paths, exclude, tsConfig: opts.tsConfig }));
+    tools.push({ name: 'dependency-cruiser', version: DC_VERSION });
+    analyses.push({ tool: 'dependency-cruiser', scope: (opts.paths ?? ['.']).join(','), status: 'ok' });
+    limitations.push(LIMITATIONS['dependency-cruiser']);
+  }
+
+  const goDirs = opts.go === 'none' ? [] : opts.go && opts.go !== 'auto' ? opts.go.split(',') : goModules(root, exclude);
+  if (goDirs.length) {
+    let version = null;
+    try { version = goVersion(); } catch (e) {
+      analyses.push({ tool: 'go list', scope: goDirs.join(','), status: 'skipped', note: `${e.message}; Go packages not analyzed` });
+    }
+    if (version) {
+      tools.push({ name: 'go', version });
+      for (const d of goDirs) {
+        const p = scanGo(root, d);
+        parts.push(p);
+        analyses.push({ tool: 'go list', scope: d, status: 'ok', note: `module ${p.module}` });
+      }
+      limitations.push(LIMITATIONS['go list']);
+    }
+  }
+
+  if (opts.nestEntry) {
+    const p = scanNest(root, opts.nestEntry, opts.nestExport ?? 'AppModule');
+    parts.push(p);
+    tools.push({ name: '@nestjs/core', version: p.version });
+    analyses.push({ tool: '@nestjs/core SerializedGraph', scope: opts.nestEntry, status: 'ok', note: 'preview mode; module top-level code executed' });
+    limitations.push(LIMITATIONS.nest);
+  }
+
+  if (!parts.length) {
+    const err = new Error('no analyzer ran (nothing to scan)');
+    err.code = 'NOTHING_SCANNED';
+    throw err;
+  }
+  return assemble(opts.subject ?? { name: basename(root), ...gitInfo(root) }, tools, analyses, parts, limitations);
+}
+
+export function assemble(subject, tools, analyses, parts, limitations) {
+  const nodes = new Map(), edges = new Map(), findings = new Map();
+  for (const p of parts) {
+    for (const n of p.nodes) if (!nodes.has(n.id)) nodes.set(n.id, n);
+    for (const e of p.edges) {
+      const k = edgeKey(e);
+      if (edges.has(k)) {
+        const prev = edges.get(k);
+        const ev = new Map([...prev.evidence, ...e.evidence].map((x) => [JSON.stringify(x), x]));
+        prev.evidence = [...ev.values()].sort(byKey((x) => JSON.stringify(x)));
+        if (prev.typeOnly && !e.typeOnly) delete prev.typeOnly;
+      } else edges.set(k, { ...e, evidence: [...e.evidence] });
+    }
+    for (const f of p.findings) {
+      const id = findingId(f);
+      if (!findings.has(id)) findings.set(id, { id, ...f });
+    }
+  }
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    kind: 'archsieve-snapshot',
+    subject,
+    tools: tools.sort(byKey((t) => t.name)),
+    analyses,
+    nodes: [...nodes.values()].sort(byKey((n) => n.id)),
+    edges: [...edges.values()].sort(byKey(edgeKey)),
+    findings: [...findings.values()].sort(byKey((f) => f.id)),
+    limitations,
+  };
+}

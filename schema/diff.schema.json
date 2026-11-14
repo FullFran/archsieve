@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/FullFran/archsieve/schema/diff-0.1.json",
+  "title": "ArchSieve diff 0.1",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "before", "after", "warnings", "summary", "components", "nodes", "edges", "findings"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": "0.1" },
+    "kind": { "const": "archsieve-diff" },
+    "before": { "$ref": "snapshot-0.1.json#/$defs/subject" },
+    "after": { "$ref": "snapshot-0.1.json#/$defs/subject" },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "summary": {
+      "type": "object", "required": ["nodes", "edges", "newFindings", "resolvedFindings"], "additionalProperties": false,
+      "properties": {
+        "nodes": { "type": "object", "additionalProperties": { "$ref": "#/$defs/count" } },
+        "edges": { "type": "object", "additionalProperties": { "$ref": "#/$defs/count" } },
+        "newFindings": { "$ref": "#/$defs/levels" },
+        "resolvedFindings": { "$ref": "#/$defs/levels" }
+      }
+    },
+    "components": {
+      "type": "object", "required": ["depth", "added", "removed", "dependencies"],
+      "description": "Directory-level view (same projection as the components diagram).",
+      "properties": {
+        "depth": { "type": "integer", "minimum": 1 },
+        "added": { "type": "array", "items": { "type": "string" } },
+        "removed": { "type": "array", "items": { "type": "string" } },
+        "dependencies": { "type": "object", "required": ["added", "removed"], "additionalProperties": false, "properties": {
+          "added": { "type": "array", "items": { "$ref": "#/$defs/componentEdge" } },
+          "removed": { "type": "array", "items": { "$ref": "#/$defs/componentEdge" } } } }
+      }
+    },
+    "nodes": { "type": "object", "$ref": "#/$defs/addedRemoved", "properties": { "added": { "type": "array", "items": { "$ref": "snapshot-0.1.json#/$defs/node" } }, "removed": { "type": "array", "items": { "$ref": "snapshot-0.1.json#/$defs/node" } } } },
+    "edges": { "type": "object", "$ref": "#/$defs/addedRemoved", "properties": { "added": { "type": "array", "items": { "$ref": "snapshot-0.1.json#/$defs/edge" } }, "removed": { "type": "array", "items": { "$ref": "snapshot-0.1.json#/$defs/edge" } } } },
+    "findings": {
+      "type": "object", "required": ["new", "resolved"], "additionalProperties": false,
+      "properties": { "new": { "type": "array", "items": { "$ref": "snapshot-0.1.json#/$defs/finding" } }, "resolved": { "type": "array", "items": { "$ref": "snapshot-0.1.json#/$defs/finding" } } }
+    }
+  },
+  "$defs": {
+    "count": { "type": "object", "required": ["before", "after"], "additionalProperties": false, "properties": { "before": { "type": "integer" }, "after": { "type": "integer" } } },
+    "levels": { "type": "object", "required": ["error", "signal", "unknown"], "additionalProperties": false, "properties": { "error": { "type": "integer" }, "signal": { "type": "integer" }, "unknown": { "type": "integer" } } },
+    "componentEdge": { "type": "object", "required": ["from", "to", "fileEdges"], "additionalProperties": false, "properties": { "from": { "type": "string" }, "to": { "type": "string" }, "fileEdges": { "type": "integer" } } },
+    "addedRemoved": { "type": "object", "required": ["added", "removed"], "properties": { "added": { "type": "array" }, "removed": { "type": "array" } } }
+  }
+}
