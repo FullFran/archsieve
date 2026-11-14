@@ -33,7 +33,7 @@ Use before designing or reviewing a structural change (new module, service, inte
 | Which tests to run for a change | `scan <repo> -o now.json`, then `affected now.json --base <ref> --repo <repo>`; run `tests`, or everything when `blind` is not empty |
 | Many `unresolved-import` unknowns, or a `ts-config-hint` signal | rescan with the `--ts-config <file>` the hint names, or `--ts-config auto` |
 | Logic kept in sync by hand across languages or containers | `scan <repo>`; read `mirrored-logic` signals and `references` edges (file:line where a comment, string or doc names another file) |
-| Dead code that tests keep alive | `scan <repo>`; read `test-only-module` signals (folder, files, lines); add real entry points with `--entry-globs` |
+| Dead code that tests keep alive | `scan <repo>`; read `test-only-module` signals (folder, files, lines); `suppressed` says why a candidate is not flagged; add entry points nothing names with `--entry-globs` |
 | How big each container is, which languages and toolchains it needs, how many dependencies it declares | `render --view containers --format md` (facts table); `diff` lists `containerFacts` changes |
 | Which containers start or call which at runtime (child processes, sidecars, HTTP routes) | `scan <repo>` then `render --view containers`; `runtime-link` edges are `pattern` confidence, `runtime-call-unresolved` unknowns are call sites nobody can read statically |
 | Where change cost concentrates, or couplings imports cannot show | `scan <repo> --history [--since 180d]`; read `churn` on containers and `co-change-without-link` signals (questions, not facts) |

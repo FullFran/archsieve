@@ -1,0 +1,11 @@
+{
+  "name": "entry-points",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.mjs",
+  "scripts": {
+    "build": "node scripts/build.mjs --out dist",
+    "dev": "tsx watch src/dev.mjs && echo ready",
+    "test": "node --test test/"
+  }
+}

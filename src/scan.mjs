@@ -14,10 +14,11 @@ import { runtimeLinks } from './adapters/patterns.mjs';
 import { containerFacts } from './adapters/facts.mjs';
 import { pathReferences } from './adapters/references.mjs';
 import { testOnlyModules } from './testonly.mjs';
+import { entryPoints } from './entrypoints.mjs';
 import { tsConfigHints } from './adapters/tsconfig.mjs';
 import { readHistory, applyHistory, DEFAULT_SINCE, MAX_CHANGESET } from './adapters/history.mjs';
 
-export const SCHEMA_VERSION = '0.5';
+export const SCHEMA_VERSION = '0.6';
 
 const LIMITATIONS = {
   'dependency-cruiser': 'Static import graph only: no runtime calls, network/IPC/queue/event links, reflection or computed dynamic imports. Unresolvable imports are listed as unknown findings, not guessed.',
@@ -261,19 +262,13 @@ export function scan(target, opts = {}) {
   const testGlobs = opts.testGlobs ?? DEFAULT_TEST_GLOBS;
   const marked = markTests(snapshot.nodes, testGlobs);
   snapshot.analyses.push({ tool: 'test globs', scope: (opts.paths ?? ['.']).join(','), status: 'ok', note: `${marked} test files or packages; globs: ${testGlobs.join(', ')}` });
-  if (!snapshot.edges.some((e) => e.kind === 'imports') || !marked) {
-    snapshot.analyses.push({ tool: 'test-only modules', scope: (opts.paths ?? ['.']).join(','), status: 'skipped', note: marked ? 'no file import graph' : 'no test files matched the test globs' });
-  } else {
-    const to = testOnlyModules(root, snapshot, { entryGlobs: opts.entryGlobs ?? [] });
-    for (const f of to.findings) snapshot.findings.push({ id: findingId(f), ...f });
-    snapshot.analyses.push({ tool: 'test-only modules', scope: (opts.paths ?? ['.']).join(','), status: 'ok', note: `${to.files} files in ${to.findings.length} groups; ${to.entryPoints} entry points from package.json${opts.entryGlobs?.length ? `; entry globs: ${opts.entryGlobs.join(', ')}` : ''}` });
-  }
   if (opts.units !== false || declared) {
     snapshot.edges.push(...linkUnits(root, snapshot));
   }
+  const files = allFiles(root, exclude, opts.paths);
+  let spawned = [];
   if (opts.units !== false) {
     const containers = snapshot.nodes.filter((n) => n.kind === 'container');
-    const files = allFiles(root, exclude, opts.paths);
     const cf = containerFacts(root, containers, files);
     for (const n of containers) n.facts = cf.facts.get(n.id);
     snapshot.analyses.push({ tool: 'container facts', scope: (opts.paths ?? ['.']).join(','), status: 'ok', note: `${files.length} files; ${cf.outside} file${cf.outside === 1 ? '' : 's'} outside every container${cf.unreadable ? `; ${cf.unreadable} unreadable` : ''}` });
@@ -282,12 +277,22 @@ export function scan(target, opts = {}) {
     snapshot.edges.push(...r.edges);
     for (const f of r.findings) snapshot.findings.push({ id: findingId(f), ...f });
     snapshot.analyses.push(r.analysis);
+    spawned = r.spawned;
     snapshot.limitations.push(LIMITATIONS.patterns);
     const pr = pathReferences(root, files, { units: containers, imports: snapshot.edges.filter((e) => e.kind === 'imports') });
     snapshot.edges.push(...pr.edges);
     for (const f of pr.findings) snapshot.findings.push({ id: findingId(f), ...f });
     snapshot.analyses.push(pr.analysis);
     snapshot.limitations.push(LIMITATIONS.references);
+  }
+  if (!snapshot.edges.some((e) => e.kind === 'imports') || !marked) {
+    snapshot.analyses.push({ tool: 'test-only modules', scope: (opts.paths ?? ['.']).join(','), status: 'skipped', note: marked ? 'no file import graph' : 'no test files matched the test globs' });
+  } else {
+    const entries = entryPoints(root, files, { snapshot, spawned, entryGlobs: opts.entryGlobs ?? [] });
+    const to = testOnlyModules(root, snapshot, { entries });
+    if (to.suppressed.length) snapshot.suppressed = to.suppressed;
+    for (const f of to.findings) snapshot.findings.push({ id: findingId(f), ...f });
+    snapshot.analyses.push({ tool: 'test-only modules', scope: (opts.paths ?? ['.']).join(','), status: 'ok', note: `${to.files} files in ${to.findings.length} groups; ${entries.size} entry points (manifests, scripts, commands, spawns)${to.suppressed.length ? `; ${to.suppressed.length} suppressed, see suppressed` : ''}${opts.entryGlobs?.length ? `; entry globs: ${opts.entryGlobs.join(', ')}` : ''}` });
   }
   if (declared) {
     for (const f of crossCheckLinks(snapshot, declared.links)) snapshot.findings.push({ id: findingId(f), ...f });

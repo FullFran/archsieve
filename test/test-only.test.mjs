@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { cpSync } from 'node:fs';
+import { cpSync, writeFileSync } from 'node:fs';
 import { cli, scratch, fixture, readJson } from './helpers.mjs';
 
 // fixtures/test-only: src/old/** (4 files importing each other) is imported only by a test;
@@ -39,6 +39,8 @@ test('S9 scan: groups stop at container boundaries; without test files the analy
   // test-split nested one folder down: its two containers share a parent that is not the root.
   const repo = scratch(t);
   cpSync(fixture('test-split'), join(repo, 'group'), { recursive: true });
+  // Without its start script, app/src/main.mjs is no entry point (#21) and both containers qualify.
+  writeFileSync(join(repo, 'group/app/package.json'), '{ "name": "@split/app", "version": "0.0.0" }\n');
   const out = join(scratch(t), 'snap.json');
   assert.equal(cli(['scan', repo, '--go', 'none', '-o', out]).code, 0);
   const groups = readJson(out).findings.filter((f) => f.rule === 'test-only-module').map((f) => f.subjects);

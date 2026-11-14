@@ -1,9 +1,9 @@
 {
-  "schemaVersion": "0.5",
+  "schemaVersion": "0.6",
   "kind": "archsieve-snapshot",
   "subject": {
     "name": "containers",
-    "commit": "aef4decebd93ac38f4923a3336492ca1fe4b7e7f",
+    "commit": "de660c5d607ec2ac0658f7c356effa49728e9ca5",
     "dirty": false
   },
   "tools": [
@@ -56,12 +56,6 @@
       "note": "0 test files or packages; globs: **/test/**, **/tests/**, **/__tests__/**, **/*.test.*, **/*.spec.*, **/*_test.*"
     },
     {
-      "tool": "test-only modules",
-      "scope": ".",
-      "status": "skipped",
-      "note": "no test files matched the test globs"
-    },
-    {
       "tool": "container facts",
       "scope": ".",
       "status": "ok",
@@ -78,6 +72,12 @@
       "scope": "comments, strings and docs",
       "status": "ok",
       "note": "0 references from 0 files; 2 already an import, left out; 5 files read"
+    },
+    {
+      "tool": "test-only modules",
+      "scope": ".",
+      "status": "skipped",
+      "note": "no test files matched the test globs"
     }
   ],
   "nodes": [

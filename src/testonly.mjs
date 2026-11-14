@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { byKey } from './util.mjs';
-import { globToRegExp } from './tests.mjs';
 
 // Production files that only tests keep alive (#9): a non-test file whose importers are all test
 // files or other such files, and which is no entry point (package.json main/module/browser/bin/
@@ -10,31 +9,12 @@ import { globToRegExp } from './tests.mjs';
 // loaded by path at runtime, which static analysis cannot see.
 const MAX_EVIDENCE = 5;
 
-function manifestEntries(root, snapshot) {
-  const entries = new Set();
-  const add = (dir, p) => { if (typeof p === 'string') entries.add(posix.normalize(posix.join(dir, p))); };
-  const walk = (dir, v) => {
-    if (typeof v === 'string') add(dir, v);
-    else if (v && typeof v === 'object') for (const x of Object.values(v)) walk(dir, x);
-  };
-  for (const u of snapshot.nodes.filter((n) => n.kind === 'container')) {
-    const manifest = u.evidence.find((e) => e.tool === 'manifest' && e.file?.endsWith('package.json'))?.file;
-    if (!manifest) continue;
-    let pkg;
-    try { pkg = JSON.parse(readFileSync(join(root, manifest), 'utf8')); } catch { continue; }
-    const dir = posix.dirname(manifest);
-    for (const field of ['main', 'module', 'browser', 'bin', 'exports']) walk(dir, pkg[field]);
-  }
-  return entries;
-}
-
-export function testOnlyModules(root, snapshot, { entryGlobs = [] } = {}) {
+// `entries`: file -> { reason, evidence } (src/entrypoints.mjs). A candidate an entry point keeps
+// alive is returned in `suppressed` with the reason, so a missing signal can be audited.
+export function testOnlyModules(root, snapshot, { entries = new Map() } = {}) {
   const nodes = new Map(snapshot.nodes.map((n) => [n.id, n]));
   const isTest = (id) => nodes.get(id)?.test === true;
   const production = snapshot.nodes.filter((n) => n.kind === 'file' && !n.test).map((n) => n.id);
-  const entry = manifestEntries(root, snapshot);
-  const globs = entryGlobs.map(globToRegExp);
-  const isEntry = (f) => entry.has(f) || globs.some((re) => re.test(f));
   const importers = new Map();
   for (const e of snapshot.edges) {
     if (e.kind !== 'imports' || e.source === e.target) continue;
@@ -42,20 +22,31 @@ export function testOnlyModules(root, snapshot, { entryGlobs = [] } = {}) {
     importers.get(e.target).add(e.source);
   }
   // Greatest fixed point: start from every imported, non-entry production file and drop any file
-  // that a production file outside the set imports.
-  const candidates = new Set(production.filter((f) => importers.has(f) && !isEntry(f)));
-  for (let changed = true; changed;) {
-    changed = false;
-    for (const f of [...candidates]) {
-      if ([...importers.get(f)].some((s) => !isTest(s) && !candidates.has(s))) { candidates.delete(f); changed = true; }
+  // that a production file outside the set imports. Then keep only files a test reaches: a cycle
+  // nobody imports is an orphan, not test-only.
+  const testOnly = (isEntry) => {
+    const candidates = new Set(production.filter((f) => importers.has(f) && !isEntry(f)));
+    for (let changed = true; changed;) {
+      changed = false;
+      for (const f of [...candidates]) {
+        if ([...importers.get(f)].some((s) => !isTest(s) && !candidates.has(s))) { candidates.delete(f); changed = true; }
+      }
     }
-  }
-  // Keep only files a test reaches: a cycle nobody imports is an orphan, not test-only.
-  const reached = new Set([...candidates].filter((f) => [...importers.get(f)].some(isTest)));
-  for (let grew = true; grew;) {
-    grew = false;
-    for (const f of candidates) if (!reached.has(f) && [...importers.get(f)].some((s) => reached.has(s))) { reached.add(f); grew = true; }
-  }
+    const reached = new Set([...candidates].filter((f) => [...importers.get(f)].some(isTest)));
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const f of candidates) if (!reached.has(f) && [...importers.get(f)].some((s) => reached.has(s))) { reached.add(f); grew = true; }
+    }
+    return reached;
+  };
+  const reached = testOnly((f) => entries.has(f));
+  const kept = [...testOnly(() => false)].filter((f) => !reached.has(f)).sort();
+  const keptSet = new Set(kept);
+  const suppressed = kept.map((f) => {
+    if (entries.has(f)) return { rule: 'test-only-module', subject: f, ...entries.get(f) };
+    const by = [...importers.get(f)].filter((s) => entries.has(s) || keptSet.has(s)).sort()[0];
+    return { rule: 'test-only-module', subject: f, reason: 'imported by an entry point', evidence: { tool: 'archsieve', file: by, detail: `imports ${f}` } };
+  });
   const flagged = [...reached].sort();
   const all = new Set(flagged);
   const under = (dir) => production.filter((f) => f.startsWith(`${dir}/`));
@@ -96,5 +87,5 @@ export function testOnlyModules(root, snapshot, { entryGlobs = [] } = {}) {
       evidence: ev.length > MAX_EVIDENCE ? [...ev.slice(0, MAX_EVIDENCE), { tool: 'archsieve', detail: `${ev.length - MAX_EVIDENCE} more` }] : ev,
     };
   });
-  return { findings, entryPoints: entry.size, files: flagged.length };
+  return { findings, suppressed, files: flagged.length };
 }

@@ -1,0 +1,5 @@
+[Unit]
+Description=Background worker
+
+[Service]
+ExecStart=/usr/bin/node /opt/app/worker/index.mjs

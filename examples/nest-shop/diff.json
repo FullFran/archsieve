@@ -1,14 +1,14 @@
 {
-  "schemaVersion": "0.5",
+  "schemaVersion": "0.6",
   "kind": "archsieve-diff",
   "before": {
     "name": "before",
-    "commit": "aef4decebd93ac38f4923a3336492ca1fe4b7e7f",
+    "commit": "de660c5d607ec2ac0658f7c356effa49728e9ca5",
     "dirty": false
   },
   "after": {
     "name": "after",
-    "commit": "aef4decebd93ac38f4923a3336492ca1fe4b7e7f",
+    "commit": "de660c5d607ec2ac0658f7c356effa49728e9ca5",
     "dirty": false
   },
   "warnings": [],

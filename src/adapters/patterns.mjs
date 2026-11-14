@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { byKey } from '../util.mjs';
 import { HTTP_GATE, serverRoutes, clientCall, routeMatch } from './routes.mjs';
@@ -23,6 +23,8 @@ const LANGS = {
     literal: /^(['"`])([^'"`$]*)\1$/,
     args: /(['"`])([^'"`$\n]*)\1|\b([A-Za-z_$][\w$]*)\b/g,
     relation: () => 'child-process',
+    // The running Node binary: the program is node, so its literal arguments say what it runs.
+    known: { 'process.execPath': 'node', 'process.argv[0]': 'node' },
   },
   rust: {
     gate: /Command::new|\.sidecar\s*\(/,
@@ -35,6 +37,16 @@ const LANGS = {
 };
 // Release binaries carry a target triple (Tauri sidecars) or .exe; the name is what comes before.
 const programName = (s) => s.replace(/\.exe$/i, '').replace(/-(x86_64|aarch64|i686|armv7|arm64|universal)-[\w-]+$/, '');
+
+// The file a literal names by path (relative to the calling file, to its container, where a process
+// usually starts, or to the root), or null.
+function fileAt(root, c, fromFile, unitPath = '.') {
+  if (!c || /\s/.test(c) || !(c.includes('/') || /\.\w+$/.test(c))) return null;
+  for (const p of [posix.normalize(posix.join(posix.dirname(fromFile), c)), posix.normalize(posix.join(unitPath, c)), posix.normalize(c.replace(/^\.\//, ''))]) {
+    try { if (!p.startsWith('..') && !p.startsWith('/') && statSync(join(root, p)).isFile()) return p; } catch { /* not there */ }
+  }
+  return null;
+}
 
 const within = (file, dir) => dir === '.' || file === dir || file.startsWith(`${dir}/`);
 
@@ -110,6 +122,7 @@ export function runtimeLinks(root, snapshot, { rustFiles = [], goFiles = [] } = 
     l.evidence.push(...evidence);
   };
   let external = 0;
+  const spawned = [];
   const read = { js: 0, rust: 0 };
   const routes = [], calls = [];
   const sources = [...jsFiles.map((f) => [f, 'js']), ...rustFiles.map((f) => [f, 'rust']), ...goFiles.map((f) => [f, 'go'])];
@@ -136,7 +149,7 @@ export function runtimeLinks(root, snapshot, { rustFiles = [], goFiles = [] } = 
     if (!processes) continue;
     read[name]++;
     const consts = new Map([...text.matchAll(lang.consts)].map((m) => [m[1], m[3]]));
-    const value = (expr) => lang.literal.exec(expr.trim())?.[2] ?? consts.get(expr.trim()) ?? null;
+    const value = (expr) => lang.literal.exec(expr.trim())?.[2] ?? consts.get(expr.trim()) ?? lang.known?.[expr.trim()] ?? null;
     lines.forEach((line, i) => {
       const m = lang.call.exec(line);
       if (!m || comment(line)) return;
@@ -148,6 +161,10 @@ export function runtimeLinks(root, snapshot, { rustFiles = [], goFiles = [] } = 
         return;
       }
       const args = [...m[3].matchAll(lang.args)].map((a) => a[2] ?? consts.get(a[3])).filter((a) => a !== undefined);
+      for (const c of [program, ...args]) {
+        const f = fileAt(root, c, file, from?.path);
+        if (f) spawned.push({ file: f, by: ev });
+      }
       const target = [program, ...args].map((c) => resolve(c, file)).find(Boolean);
       if (!target) { external++; return; }
       if (!from || target === from) return;
@@ -186,5 +203,5 @@ export function runtimeLinks(root, snapshot, { rustFiles = [], goFiles = [] } = 
     note: `${plural(edges.length, 'runtime link', 'runtime links')}, ${plural(external, 'call site', 'call sites')} to programs outside the repository, ${nUnresolved} unresolved; read ${read.js} of ${jsFiles.length} production JS/TS files and ${read.rust} of ${plural(rustFiles.length, 'Rust file', 'Rust files')} that name a child-process API`
       + `; HTTP: ${plural(routes.length, 'route', 'routes')} in ${plural(routeUnits, 'container', 'containers')}; ${plural(http.matched, 'call', 'calls')} matched, ${http.ambiguous} ambiguous, ${http.noRoute} matched no route, ${http.noLiteral} without a literal path`,
   };
-  return { edges, findings, analysis };
+  return { edges, findings, analysis, spawned };
 }

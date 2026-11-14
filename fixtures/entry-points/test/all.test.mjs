@@ -1,0 +1,14 @@
+import test from 'node:test';
+import * as m1 from '../scripts/build.mjs';
+import * as m2 from '../src/dev.mjs';
+import * as m3 from '../packages/tool/bin/run.mjs';
+import * as m4 from '../server/main.mjs';
+import * as m5 from '../worker/index.mjs';
+import * as m6 from '../web/serve.mjs';
+import * as m7 from '../tools/migrate.mjs';
+import * as m8 from '../tools/seed.mjs';
+import * as m9 from '../tools/report.mjs';
+import * as m10 from '../jobs/child.mjs';
+import * as m11 from '../legacy/old.mjs';
+import * as m12 from '../src/index.mjs';
+test('loads', () => {});
