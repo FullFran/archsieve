@@ -1,4 +1,5 @@
 import { byKey } from './util.mjs';
+import { withoutTests } from './tests.mjs';
 
 // A diagram is a VIEW of the snapshot, never the source of truth. Every rendered
 // node/edge comes from the snapshot; nothing is added or inferred here.
@@ -70,13 +71,15 @@ export function project(snapshot, { view = 'components', depth = 2, externals = 
     if (!s || !t || s.id === t.id || (s.kind === 'boundary' && t.kind === 'boundary')) continue;
     const k = `${s.id}\u0000${t.id}\u0000${e.kind}`;
     if (e.kind === 'depends-on') {
-      edges.set(k, { source: s.id, target: t.id, kind: e.kind, relations: e.relations ?? {}, ...(e.declared ? { declared: e.declared } : {}), ...(e.status ? { state: e.status } : {}) });
+      edges.set(k, { source: s.id, target: t.id, kind: e.kind, relations: e.relations ?? {}, ...(e.testRelations ? { testRelations: e.testRelations } : {}), ...(e.declared ? { declared: e.declared } : {}), ...(e.status ? { state: e.status } : {}) });
       continue;
     }
     const prev = edges.get(k);
     const relation = e.kind !== 'imports' ? e.kind : e.typeOnly ? 'type-only' : e.dynamic ? 'lazy' : 'imports';
     const relations = { ...prev?.relations, [relation]: (prev?.relations?.[relation] ?? 0) + 1 };
-    edges.set(k, { source: s.id, target: t.id, kind: e.kind, count: (prev?.count ?? 0) + 1, relations });
+    const fromTest = nodeById.get(e.source).test;
+    const testRelations = fromTest || prev?.testRelations ? { ...prev?.testRelations, ...(fromTest ? { [relation]: (prev?.testRelations?.[relation] ?? 0) + 1 } : {}) } : null;
+    edges.set(k, { source: s.id, target: t.id, kind: e.kind, count: (prev?.count ?? 0) + 1, relations, ...(testRelations ? { testRelations } : {}) });
   }
   if (within) {
     const used = new Set([...edges.values()].flatMap((e) => [e.source, e.target]));
@@ -104,15 +107,16 @@ export function compareProjections(before, after) {
 // "type-only" (erased at compile time), or the Nest relation. Aggregated arrows count each relation.
 const RELATION_ORDER = ['imports', 'lazy', 'type-only', 'package-dependency'];
 const NEST_RELATION = { 'nest-imports': 'imports', 'nest-injects': 'injects' };
+// `imports x152 (test x148)`: the bracket says how many of them come from test files.
+const relationText = (rel, tests = {}) => RELATION_ORDER.filter((r) => rel[r])
+  .map((r) => `${r}${rel[r] > 1 ? ` x${rel[r]}` : ''}${tests[r] ? ` (test x${tests[r]})` : ''}`).join(', ');
 function edgeLabel(e) {
   if (NEST_RELATION[e.kind]) return `${NEST_RELATION[e.kind]}${e.count > 1 ? ` x${e.count}` : ''}`;
   if (e.kind === 'depends-on') {
     const declared = (e.declared ?? []).map((d) => [d.title, d.technology ? `(${d.technology})` : ''].filter(Boolean).join(' ')).join(', ');
-    const observed = RELATION_ORDER.filter((r) => e.relations[r]).map((r) => `${r}${e.relations[r] > 1 ? ` x${e.relations[r]}` : ''}`).join(', ');
-    return [declared, observed, LINK_STATE_TEXT[e.state]].filter(Boolean).join(' · ');
+    return [declared, relationText(e.relations, e.testRelations), LINK_STATE_TEXT[e.state]].filter(Boolean).join(' · ');
   }
-  const rel = e.relations ?? { imports: e.count ?? 1 };
-  return RELATION_ORDER.filter((r) => rel[r]).map((r) => `${r}${rel[r] > 1 ? ` x${rel[r]}` : ''}`).join(', ');
+  return relationText(e.relations ?? { imports: e.count ?? 1 }, e.testRelations);
 }
 // Dashed when nothing behind the arrow survives compilation (only type-only imports).
 const typeOnlyEdge = (e) => e.kind === 'imports' && e.relations && Object.keys(e.relations).every((r) => r === 'type-only');
@@ -235,7 +239,12 @@ function overParts(p, { maxNodes, maxEdges }, fmt) {
 }
 
 // Builds everything a renderer needs: the (possibly reduced) projection, its title, concern and scope notes.
-export function buildDiagram(snapshot, { view = 'components', depth = 2, externals = false, within = null, focus = null, maxNodes = 40, maxEdges = 100, before = null } = {}) {
+export function buildDiagram(snapshot, { view = 'components', depth = 2, externals = false, within = null, focus = null, maxNodes = 40, maxEdges = 100, before = null, noTests = false } = {}) {
+  let hiddenTests = 0;
+  if (noTests) {
+    ({ snapshot, hidden: hiddenTests } = withoutTests(snapshot));
+    if (before) before = withoutTests(before).snapshot;
+  }
   if (within !== null) {
     within = within.replace(/^(\.\/)+/, '').replace(/\/+$/, '');
     if (!within || within === '.') throw usage('--within needs a folder below the repository root, e.g. --within src/users');
@@ -271,6 +280,7 @@ export function buildDiagram(snapshot, { view = 'components', depth = 2, externa
   const scope = [`Snapshot ${subject}`, `showing ${shown} of ${fullAt.nodes.filter((n) => n.kind !== 'boundary').length} ${unit}`];
   if (within) scope.push(`within ${within}${boundaries ? ` (outside neighbours collapsed into ${boundaries} boundary ${boundaries === 1 ? 'box' : 'boxes'})` : ''}`);
   if (focus !== null) scope.push(`focus on ${focusLabel} (direct dependencies and dependents only)`);
+  if (noTests) scope.push(`test imports hidden (--no-tests): ${hiddenTests}`);
   scope.push(...notes);
   return {
     projection: p, view, title: focus !== null ? `Focus on ${focusLabel} in ${base}` : base,
@@ -290,6 +300,7 @@ function containerLegend(p) {
   if (edge((e) => e.declared)) rows.push(['Words before the first `·`', 'Relation declared in the model, with its technology in brackets']);
   const rel = new Set(p.edges.flatMap((e) => Object.keys(e.relations ?? {})));
   if (rel.has('imports') || rel.has('lazy') || rel.has('type-only')) rows.push(['`imports`, `lazy`, `type-only`', 'Code imports that cross from one container into the other, counted']);
+  if (edge((e) => e.testRelations)) rows.push(['`(test x2)` after a count', 'How many of those imports come from test files (test globs recorded in the snapshot)']);
   if (rel.has('package-dependency')) rows.push(['`package-dependency`', 'A package.json dependency on the other container']);
   if (edge((e) => e.state === 'declared-unverified')) rows.push(['Dashed arrow ending in `unverified`', 'Declared in the model, no static evidence in the code (runtime links such as HTTP or IPC are never visible statically)']);
   if (edge((e) => e.state === 'undeclared')) rows.push(['Arrow ending in `not in model`', 'Found in the code, not declared in the model']);
@@ -321,6 +332,7 @@ function legendRows(p, view) {
   if (rel.has('nest-imports')) rows.push(['Dashed arrow labelled `imports`', 'A Nest module imports another module']);
   if (rel.has('nest-injects')) rows.push(['Solid arrow labelled `injects`', 'A class is injected into another']);
   if (counted) rows.push(['`x3` after a label', 'How many underlying relations the arrow stands for']);
+  if (p.edges.some((e) => e.testRelations)) rows.push(['`(test x2)` after a count', 'How many of those relations come from test files (test globs recorded in the snapshot)']);
   if (p.edges.some((e) => e.status === 'added')) rows.push(['Thick green arrow', 'Added since the compared snapshot']);
   if (p.edges.some((e) => e.status === 'removed')) rows.push(['Red dashed arrow', 'Removed since the compared snapshot']);
   return rows;

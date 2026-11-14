@@ -113,10 +113,11 @@ export function linkUnits(root, snapshot) {
   const within = (file, dir) => dir === '.' || file === dir || file.startsWith(`${dir}/`);
   const unitOf = (file) => units.find((u) => within(file, u.path));
   const fileOf = new Map(snapshot.nodes.filter((n) => ['file', 'vendored-file', 'go-package'].includes(n.kind)).map((n) => [n.id, n.kind === 'go-package' ? n.file : n.id]));
+  const tests = new Set(snapshot.nodes.filter((n) => n.test).map((n) => n.id));
   const links = new Map();
   const link = (from, to) => {
     const k = `${from.id}\u0000${to.id}`;
-    if (!links.has(k)) links.set(k, { source: from.id, target: to.id, kind: 'depends-on', relations: {}, evidence: [] });
+    if (!links.has(k)) links.set(k, { source: from.id, target: to.id, kind: 'depends-on', relations: {}, testRelations: {}, evidence: [] });
     return links.get(k);
   };
   for (const e of snapshot.edges) {
@@ -128,6 +129,7 @@ export function linkUnits(root, snapshot) {
     const l = link(su, tu);
     const rel = e.typeOnly ? 'type-only' : e.dynamic ? 'lazy' : 'imports';
     l.relations[rel] = (l.relations[rel] ?? 0) + 1;
+    if (tests.has(e.source)) l.testRelations[rel] = (l.testRelations[rel] ?? 0) + 1;
     l.evidence.push({ tool: 'archsieve', file: sf, detail: `imports ${tf}` });
   }
   const byName = new Map(units.filter((u) => u.technology.includes('node')).map((u) => [u.title, u]));
@@ -148,7 +150,8 @@ export function linkUnits(root, snapshot) {
   }
   return [...links.values()].map((l) => {
     const ev = [...new Map(l.evidence.map((x) => [JSON.stringify(x), x])).values()].sort(byKey((x) => JSON.stringify(x)));
-    const relations = Object.fromEntries(Object.entries(l.relations).sort(([a], [b]) => (a < b ? -1 : 1)));
-    return { ...l, relations, evidence: ev.length > MAX_EVIDENCE ? [...ev.slice(0, MAX_EVIDENCE), { tool: 'archsieve', detail: `${ev.length - MAX_EVIDENCE} more` }] : ev };
+    const sorted = (o) => Object.fromEntries(Object.entries(o).sort(([a], [b]) => (a < b ? -1 : 1)));
+    const { testRelations, ...rest } = l;
+    return { ...rest, relations: sorted(l.relations), ...(Object.keys(testRelations).length ? { testRelations: sorted(testRelations) } : {}), evidence: ev.length > MAX_EVIDENCE ? [...ev.slice(0, MAX_EVIDENCE), { tool: 'archsieve', detail: `${ev.length - MAX_EVIDENCE} more` }] : ev };
   });
 }

@@ -9,8 +9,9 @@ import { scanNest } from './adapters/nest.mjs';
 import { scanUnits, linkUnits, MANIFESTS } from './adapters/units.mjs';
 import { readLikeC4 } from './adapters/likec4.mjs';
 import { applyModel, crossCheckLinks, modelEvidenceFile } from './model.mjs';
+import { markTests, DEFAULT_TEST_GLOBS } from './tests.mjs';
 
-export const SCHEMA_VERSION = '0.2';
+export const SCHEMA_VERSION = '0.3';
 
 const LIMITATIONS = {
   'dependency-cruiser': 'Static import graph only: no runtime calls, network/IPC/queue/event links, reflection or computed dynamic imports. Unresolvable imports are listed as unknown findings, not guessed.',
@@ -202,6 +203,9 @@ export function scan(target, opts = {}) {
     throw err;
   }
   const snapshot = assemble(opts.subject ?? { name: basename(root), ...gitInfo(root) }, tools, analyses, parts, limitations);
+  const testGlobs = opts.testGlobs ?? DEFAULT_TEST_GLOBS;
+  const marked = markTests(snapshot.nodes, testGlobs);
+  snapshot.analyses.push({ tool: 'test globs', scope: (opts.paths ?? ['.']).join(','), status: 'ok', note: `${marked} test files or packages; globs: ${testGlobs.join(', ')}` });
   if (opts.units !== false || declared) {
     snapshot.edges.push(...linkUnits(root, snapshot));
   }

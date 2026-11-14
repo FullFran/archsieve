@@ -5,15 +5,17 @@ import { scan, scanRef } from '../src/scan.mjs';
 import { diff, toMarkdown } from '../src/diff.mjs';
 import { buildDiagram, toMarkdownView, toMermaid, toDot } from '../src/render.mjs';
 import { validate } from '../src/validate.mjs';
+import { DEFAULT_TEST_GLOBS } from '../src/tests.mjs';
 
 const USAGE = `archsieve: architecture evidence for coding agents (V0, experimental)
 
 Usage:
   archsieve scan <dir> [--ref <git-ref>] [-o snapshot.json] [--paths a,b] [--exclude <regex, added to defaults>] [--ts-config <file>]
+                       [--test-globs <glob,...>]
                        [--no-js] [--no-units] [--model <likec4.json>] [--go auto|none|<dir,...>] [--nest-entry <compiled module.js> [--nest-export AppModule]]
-  archsieve diff <before.json> <after.json> [--format json|md] [--depth N] [-o file] [--fail-on error|signal|none]
+  archsieve diff <before.json> <after.json> [--format json|md] [--depth N] [-o file] [--fail-on error|signal|none] [--no-tests]
   archsieve render <snapshot.json> [--view components|files|nest|containers] [--depth N] [--format mermaid|dot|md]
-                       [--compare <before.json>] [--externals] [--within <dir>] [--focus <id>]
+                       [--compare <before.json>] [--externals] [--within <dir>] [--focus <id>] [--no-tests]
                        [--max-nodes N (default 40)] [--max-edges N (default 100)] [-o file]
   archsieve validate <snapshot-or-diff.json>
 
@@ -21,12 +23,16 @@ render: --format md adds title, concern, scope line and legend. --within zooms i
 dashed boundary boxes); --focus shows one element with its direct dependencies and dependents. Over budget, components
 reduce --depth; files and nest exit 2. 0 disables a budget.
 
+Tests: scan marks files matching --test-globs (default: ${DEFAULT_TEST_GLOBS.join(', ')}) as test; labels show
+the test share, e.g. "imports x152 (test x148)". --no-tests (render, diff) leaves imports from test files out.
+
 Exit codes: 0 ok, 1 --fail-on threshold reached or invalid document, 2 usage or tool error.
 --nest-entry EXECUTES the target's module top-level code (providers are not instantiated). Use only on trusted code.`;
 
 const OPTIONS = {
   output: { type: 'string', short: 'o' }, ref: { type: 'string' },
   paths: { type: 'string' }, exclude: { type: 'string' }, 'ts-config': { type: 'string' },
+  'test-globs': { type: 'string' }, 'no-tests': { type: 'boolean' },
   'no-js': { type: 'boolean' }, 'no-units': { type: 'boolean' }, model: { type: 'string' }, go: { type: 'string' },
   'nest-entry': { type: 'string' }, 'nest-export': { type: 'string' },
   format: { type: 'string' }, 'fail-on': { type: 'string' },
@@ -49,7 +55,7 @@ function main(argv) {
       if (args.length !== 1) usageError('scan needs exactly one <dir>');
       const snap = (o.ref ? (d, x) => scanRef(d, o.ref, x) : scan)(args[0], {
         paths: o.paths?.split(','), exclude: o.exclude, tsConfig: o['ts-config'], js: !o['no-js'], units: !o['no-units'], model: o.model,
-        go: o.go ?? 'auto', nestEntry: o['nest-entry'], nestExport: o['nest-export'],
+        testGlobs: o['test-globs']?.split(',').map((g) => g.trim()).filter(Boolean), go: o.go ?? 'auto', nestEntry: o['nest-entry'], nestExport: o['nest-export'],
       });
       out(`${JSON.stringify(snap, null, 2)}\n`, o.output);
       const c = { error: 0, signal: 0, unknown: 0 };
@@ -63,7 +69,7 @@ function main(argv) {
       const failOn = oneOf(o['fail-on'] ?? 'none', ['error', 'signal', 'none'], 'fail-on');
       const depth = Number(o.depth ?? 2);
       if (!Number.isInteger(depth) || depth < 1) usageError('--depth must be a positive integer');
-      const d = diff(readJson(args[0]), readJson(args[1]), { depth });
+      const d = diff(readJson(args[0]), readJson(args[1]), { depth, noTests: !!o['no-tests'] });
       out(format === 'md' ? toMarkdown(d) : `${JSON.stringify(d, null, 2)}\n`, o.output);
       const n = d.summary.newFindings;
       process.stderr.write(`archsieve: new findings: ${n.error} error, ${n.signal} signal, ${n.unknown} unknown\n`);
@@ -81,7 +87,7 @@ function main(argv) {
       const d = buildDiagram(readJson(args[0]), {
         view, depth, externals: !!o.externals, within: o.within ?? null, focus: o.focus ?? null,
         maxNodes: budget(o['max-nodes'], 'max-nodes', 40), maxEdges: budget(o['max-edges'], 'max-edges', 100),
-        before: o.compare ? readJson(o.compare) : null,
+        before: o.compare ? readJson(o.compare) : null, noTests: !!o['no-tests'],
       });
       out(format === 'md' ? toMarkdownView(d) : format === 'dot' ? toDot(d.projection, { title: d.title }) : toMermaid(d.projection, { title: d.title }), o.output);
       return 0;
