@@ -7,6 +7,8 @@ import { scanDepcruise, DEFAULT_EXCLUDE, VENDOR, VERSION as DC_VERSION } from '.
 import { scanGo, goVersion } from './adapters/golist.mjs';
 import { scanNest } from './adapters/nest.mjs';
 import { scanUnits, linkUnits, MANIFESTS } from './adapters/units.mjs';
+import { readLikeC4 } from './adapters/likec4.mjs';
+import { applyModel, crossCheckLinks, modelEvidenceFile } from './model.mjs';
 
 export const SCHEMA_VERSION = '0.2';
 
@@ -14,6 +16,7 @@ const LIMITATIONS = {
   'dependency-cruiser': 'Static import graph only: no runtime calls, network/IPC/queue/event links, reflection or computed dynamic imports. Unresolvable imports are listed as unknown findings, not guessed.',
   'go list': 'Go package import graph only; standard library omitted; external packages collapsed to host/org/repo. Built with the current GOOS/GOARCH and no build tags, so tagged files may be missing. Rust/Tauri code is not analyzed in V0.',
   manifests: 'Units come from manifests read as data (package.json, Cargo targets via cargo metadata, go.mod and Go main packages, tauri.conf.json). Links between units at runtime (HTTP, IPC, child processes) are not visible statically.',
+  model: 'The declared model is read as exported, never run. A declared-unverified link is not wrong, only unproven: runtime links (HTTP, IPC, child processes) have no static evidence.',
   'nest': 'NestJS DI graph as registered by Nest in preview mode: providers are not instantiated, so factory/value providers and anything resolved via ModuleRef/request scope at runtime is not visible.',
 };
 
@@ -164,13 +167,25 @@ export function scan(target, opts = {}) {
     }
   }
 
-  if (opts.units !== false) {
-    const files = manifestFiles(root, exclude, opts.paths);
-    const u = scanUnits(root, { files, goMains });
+  const model = opts.model ? readLikeC4(opts.model) : null;
+  let declared = null;
+  if (opts.units !== false || model) {
+    const units = opts.units !== false;
+    const files = units ? manifestFiles(root, exclude, opts.paths) : [];
+    const u = units ? scanUnits(root, { files, goMains }) : { nodes: [], edges: [], findings: [] };
     parts.push(u);
-    tools.push(...u.tools);
-    analyses.push({ tool: 'manifests', scope: (opts.paths ?? ['.']).join(','), status: 'ok', note: `${u.nodes.length} units from ${files.length} manifests` }, ...u.analyses);
-    limitations.push(LIMITATIONS.manifests);
+    if (units) {
+      tools.push(...u.tools);
+      analyses.push({ tool: 'manifests', scope: (opts.paths ?? ['.']).join(','), status: 'ok', note: `${u.nodes.length} units from ${files.length} manifests` }, ...u.analyses);
+      limitations.push(LIMITATIONS.manifests);
+    }
+    if (model) {
+      const evFile = modelEvidenceFile(root, opts.model);
+      declared = applyModel(root, u.nodes, model, evFile);
+      parts.push({ nodes: declared.nodes, edges: [], findings: declared.findings });
+      analyses.push({ tool: 'declared model', scope: evFile, status: 'ok', note: `${model.format}: ${model.elements.length} elements, ${model.links.length} links` });
+      limitations.push(LIMITATIONS.model);
+    }
   }
 
   if (opts.nestEntry) {
@@ -187,10 +202,14 @@ export function scan(target, opts = {}) {
     throw err;
   }
   const snapshot = assemble(opts.subject ?? { name: basename(root), ...gitInfo(root) }, tools, analyses, parts, limitations);
-  if (opts.units !== false) {
+  if (opts.units !== false || declared) {
     snapshot.edges.push(...linkUnits(root, snapshot));
-    snapshot.edges.sort(byKey(edgeKey));
   }
+  if (declared) {
+    for (const f of crossCheckLinks(snapshot, declared.links)) snapshot.findings.push({ id: findingId(f), ...f });
+    snapshot.findings.sort(byKey((f) => f.id));
+  }
+  snapshot.edges.sort(byKey(edgeKey));
   return snapshot;
 }
 

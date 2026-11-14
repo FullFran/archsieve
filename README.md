@@ -18,7 +18,7 @@ repo or commit ──► existing analyzers ──► snapshot.json ──► di
 
 - **scan**: runs existing analyzers and normalizes their output into one JSON snapshot. Every node and edge records which tool reported it.
 - **diff**: compares two snapshots: nodes, edges, component-level dependencies and findings that are new or resolved. `--fail-on error` turns it into a CI gate.
-- **render**: Mermaid or DOT views (components, files, NestJS DI), optionally coloured against a previous snapshot.
+- **render**: Mermaid, DOT or Markdown views (components, files, NestJS DI), optionally coloured against a previous snapshot. Each diagram has a title, keeps to a budget of boxes and arrows (`--max-nodes`, `--max-edges`), and can zoom into a folder (`--within`) or one element (`--focus`). `--format md` adds the concern, what is shown out of what, and a legend.
 - **validate**: checks documents against the JSON Schemas in `schema/`.
 
 Findings have three levels and nothing else:
@@ -79,7 +79,8 @@ Boxes are blue for code, yellow for npm packages and purple for Nest modules. In
 | JS / TS / MJS / TSX | dependency-cruiser 18.7.2 | Type-only imports are labelled. Vendored dirs (`vendor/`, `third_party/`, `node_modules/`) are boundaries and are not followed. Git-ignored dirs are excluded. |
 | Go | `go list` | Offline (`GOPROXY=off`). Standard library omitted. |
 | NestJS DI | `@nestjs/core` SerializedGraph, `preview: true` | Opt-in `--nest-entry <compiled module>`. **Runs module top-level code**; providers are not instantiated. |
-| Units (containers, packages) | manifests read as data; `cargo metadata --no-deps --offline` | Every `package.json`, `Cargo.toml`, `go.mod`, Go `package main` and `tauri.conf.json` becomes a `container` node with its technology, whether it can run (`bin`, `scripts.start`, a Cargo bin, `package main`) and the manifest that proves it. Links between units at runtime are not visible. `--no-units` skips it. See [ADR 0004](docs/adr/0004-container-level.md). |
+| Units (containers, packages) | manifests read as data; `cargo metadata --no-deps --offline` | Every `package.json`, `Cargo.toml`, `go.mod`, Go `package main` and `tauri.conf.json` becomes a `container` node with its technology, whether it can run (`bin`, `scripts.start`, a Cargo bin, `package main`) and the manifest that proves it. Imports that cross units and `package.json` dependencies on another unit become `depends-on` links. Links at runtime (HTTP, IPC, child processes) are not visible. `--no-units` skips it. See [ADR 0004](docs/adr/0004-container-level.md). |
+| Declared model | LikeC4 JSON export (`likec4 export json --skip-layout`) | Opt-in `--model <file>`. LikeC4 is not required: only its exported JSON is read. An element with `metadata { path '<dir>' }` is matched to the unit at that path (a path without a manifest becomes a unit). Each container and link gets a state: `confirmed`, `declared-unverified` or `undeclared`. Gaps are findings: undeclared containers and links are signals, declared links without static evidence are unknown. |
 
 ## Known limitations
 

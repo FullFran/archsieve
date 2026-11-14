@@ -1,0 +1,64 @@
+specification {
+  element system
+  element container
+  element external
+}
+
+model {
+  shop = system 'Shop' {
+    api = container 'API' {
+      technology 'Node'
+      metadata {
+        path 'api'
+      }
+    }
+    cli = container 'CLI' {
+      technology 'Node'
+      metadata {
+        path 'packages/cli'
+      }
+    }
+    shared = container 'Shared library' {
+      technology 'Node'
+      metadata {
+        path 'packages/shared'
+      }
+    }
+    desktop = container 'Desktop app' {
+      technology 'Tauri'
+      metadata {
+        path 'desktop'
+      }
+    }
+    svc = container 'Store service' {
+      technology 'Go'
+      metadata {
+        path 'svc'
+      }
+    }
+    mailer = container 'Mailer' {
+      technology 'Node'
+      metadata {
+        path 'workers/mailer'
+      }
+    }
+  }
+  payments = external 'Payments provider'
+
+  shop.desktop -> shop.api 'calls' {
+    technology 'HTTP'
+  }
+  shop.api -> shop.svc 'spawns' {
+    technology 'child process'
+  }
+  shop.api -> payments 'charges' {
+    technology 'HTTPS'
+  }
+  shop.cli -> shop.shared 'uses'
+}
+
+views {
+  view index {
+    include *
+  }
+}

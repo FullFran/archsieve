@@ -10,7 +10,7 @@ const USAGE = `archsieve: architecture evidence for coding agents (V0, experimen
 
 Usage:
   archsieve scan <dir> [--ref <git-ref>] [-o snapshot.json] [--paths a,b] [--exclude <regex, added to defaults>] [--ts-config <file>]
-                       [--no-js] [--no-units] [--go auto|none|<dir,...>] [--nest-entry <compiled module.js> [--nest-export AppModule]]
+                       [--no-js] [--no-units] [--model <likec4.json>] [--go auto|none|<dir,...>] [--nest-entry <compiled module.js> [--nest-export AppModule]]
   archsieve diff <before.json> <after.json> [--format json|md] [--depth N] [-o file] [--fail-on error|signal|none]
   archsieve render <snapshot.json> [--view components|files|nest] [--depth N] [--format mermaid|dot|md]
                        [--compare <before.json>] [--externals] [--within <dir>] [--focus <id>]
@@ -27,7 +27,7 @@ Exit codes: 0 ok, 1 --fail-on threshold reached or invalid document, 2 usage or 
 const OPTIONS = {
   output: { type: 'string', short: 'o' }, ref: { type: 'string' },
   paths: { type: 'string' }, exclude: { type: 'string' }, 'ts-config': { type: 'string' },
-  'no-js': { type: 'boolean' }, 'no-units': { type: 'boolean' }, go: { type: 'string' },
+  'no-js': { type: 'boolean' }, 'no-units': { type: 'boolean' }, model: { type: 'string' }, go: { type: 'string' },
   'nest-entry': { type: 'string' }, 'nest-export': { type: 'string' },
   format: { type: 'string' }, 'fail-on': { type: 'string' },
   within: { type: 'string' }, focus: { type: 'string' }, 'max-nodes': { type: 'string' }, 'max-edges': { type: 'string' },
@@ -48,7 +48,7 @@ function main(argv) {
     case 'scan': {
       if (args.length !== 1) usageError('scan needs exactly one <dir>');
       const snap = (o.ref ? (d, x) => scanRef(d, o.ref, x) : scan)(args[0], {
-        paths: o.paths?.split(','), exclude: o.exclude, tsConfig: o['ts-config'], js: !o['no-js'], units: !o['no-units'],
+        paths: o.paths?.split(','), exclude: o.exclude, tsConfig: o['ts-config'], js: !o['no-js'], units: !o['no-units'], model: o.model,
         go: o.go ?? 'auto', nestEntry: o['nest-entry'], nestExport: o['nest-export'],
       });
       out(`${JSON.stringify(snap, null, 2)}\n`, o.output);
