@@ -1,0 +1,6 @@
+# A virtual uv workspace root: tool configuration only, no [project] table, so it is not a unit.
+[tool.uv.workspace]
+members = ["worker", "lib"]
+
+[tool.ruff]
+line-length = 100

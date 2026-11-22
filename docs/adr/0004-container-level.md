@@ -20,7 +20,8 @@ Among the tools reviewed, none compares a declared container model with what the
    - `package.json`;
    - Cargo targets through `cargo metadata --no-deps --offline`, which reads manifests without running build scripts;
    - Go `package main` through `go list`;
-   - `tauri.conf.json`.
+   - `tauri.conf.json`;
+   - `pyproject.toml` with a `[project]` or `[tool.poetry]` table (issue #34), read with a small built-in TOML reader (`src/adapters/toml.mjs`, no dependency). Technology `python`; runnable when it declares `[project.scripts]`, `[project.gui-scripts]` or poetry scripts, has a `__main__.py`, or has a Dockerfile `CMD`/`ENTRYPOINT` beside it. A file with only tool configuration or a virtual uv workspace root is not a unit. Python imports are not analyzed.
 
    Every unit carries the manifest that proves it.
 3. **The declared model enters through an adapter, not a dependency.**

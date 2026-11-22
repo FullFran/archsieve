@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "orders-worker"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "aio-pika>=9.5.5",
+  "pydantic>=2",   # comment, with a ] bracket
+  "httpx[http2]>=0.27",
+]
+
+[project.scripts]
+orders-worker = "worker.main:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.7"]
+ocr = ["pytesseract>=0.3"]
+
+[dependency-groups]
+lint = ["mypy>=1.13"]
