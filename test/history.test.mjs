@@ -82,6 +82,48 @@ test('S5 scan --history --ref reads the history of that commit, not of the worki
   assert.equal(snap.nodes.find((n) => n.id === 'b/z.mjs').churn, 4, 'the last commit (b only) is after HEAD~1');
 });
 
+// #39: a root package plus a, b and c. Docs, an image and the lockfile change with a and b;
+// a root script changes with c. Only the script is coupling.
+function rootNoiseRepo(t) {
+  const repo = join(scratch(t), 'repo');
+  writeFileSync(join(mkdirP(repo), 'package.json'), JSON.stringify({ name: 'root', private: true }));
+  for (const u of ['a', 'b', 'c']) writeFileSync(join(mkdirP(join(repo, u)), 'package.json'), JSON.stringify({ name: `@h/${u}` }));
+  for (const [f, body] of [['a/x.mjs', 'export const x = 0;\n'], ['b/z.mjs', 'export const z = 0;\n'], ['c/y.mjs', 'export const y = 0;\n'],
+    ['README.md', '# r\n'], ['docs/adr.md', '# adr\n'], ['docs/diagram.png', 'png\n'], ['pnpm-lock.yaml', 'lockfileVersion: 9\n'], ['scripts/deploy.sh', 'echo\n']]) {
+    mkdirP(join(repo, f, '..'));
+    writeFileSync(join(repo, f), body);
+  }
+  const git = (args, when) => {
+    const date = `@${when} +0000`;
+    const r = spawnSync('git', ['-c', 'user.email=t@example.com', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', ...args],
+      { cwd: repo, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date } });
+    assert.equal(r.status, 0, r.stderr);
+  };
+  git(['init', '-q'], T0);
+  git(['add', '.'], T0);
+  git(['commit', '-qm', 'initial'], T0);
+  let day = 100;
+  const commit = (...files) => {
+    for (const f of files) writeFileSync(join(repo, f), `${readFileSync(join(repo, f), 'utf8')}x\n`);
+    git(['commit', '-qam', `c${day}`], T0 + day++ * DAY);
+  };
+  for (let i = 0; i < 4; i++) commit('a/x.mjs', 'README.md', 'docs/adr.md');
+  for (let i = 0; i < 4; i++) commit('b/z.mjs', 'pnpm-lock.yaml', 'docs/diagram.png');
+  for (let i = 0; i < 4; i++) commit('c/y.mjs', 'scripts/deploy.sh');
+  return repo;
+}
+function mkdirP(dir) { mkdirSync(dir, { recursive: true }); return dir; }
+
+test('#39 scan --history: docs, images and lockfiles are not co-change coupling; a root script still is', (t) => {
+  const { snap } = scanHistory(t, rootNoiseRepo(t));
+  const co = snap.findings.filter((f) => f.rule === 'co-change-without-link');
+  assert.deepEqual(co.map((f) => f.subjects), [['container:.', 'container:c']]);
+  const churn = (id) => snap.nodes.find((n) => n.id === id).churn;
+  assert.equal(churn('container:.'), 4, 'only the commits that touched the root script count for the root');
+  assert.equal(churn('container:a'), 4);
+  assert.equal(churn('a/x.mjs'), 4, 'file churn is unchanged');
+});
+
 test('S5 scan --history outside a git checkout is skipped, never guessed', (t) => {
   const dir = scratch(t);
   writeFileSync(join(dir, 'a.mjs'), 'export const a = 1;\n');
