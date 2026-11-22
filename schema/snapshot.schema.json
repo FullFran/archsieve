@@ -78,7 +78,7 @@
       "type": "object", "required": ["source", "target", "kind", "evidence"],
       "properties": {
         "source": { "type": "string" }, "target": { "type": "string" },
-        "kind": { "enum": ["imports", "nest-imports", "nest-injects", "depends-on", "runtime-link", "references"], "description": "runtime-link: container to container evidence from call sites (child processes, sidecars, HTTP routes), read by a static pattern, never a code dependency. references: file to file, a repository path named in a comment, string literal or doc; a hint, never an import, kept out of views and of affected. Its endpoints are file paths that may have no file node (files outside the import graph)." },
+        "kind": { "enum": ["imports", "nest-imports", "nest-injects", "depends-on", "runtime-link", "references"], "description": "runtime-link: container to container evidence from call sites (child processes, sidecars, HTTP routes, AMQP and BullMQ queues; a queue link points from the producing container to the consuming one), read by a static pattern, never a code dependency. references: file to file, a repository path named in a comment, string literal or doc; a hint, never an import, kept out of views and of affected. Its endpoints are file paths that may have no file node (files outside the import graph)." },
         "confidence": { "const": "pattern", "description": "Present on runtime-link and references edges: found by a line pattern, not by a parser or at runtime." },
         "relations": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 1 } },
         "testRelations": { "type": "object", "description": "The part of relations whose source is a test file.", "additionalProperties": { "type": "integer", "minimum": 1 } },

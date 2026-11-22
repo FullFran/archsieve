@@ -11,6 +11,7 @@ import { readLikeC4 } from './adapters/likec4.mjs';
 import { applyModel, crossCheckLinks, modelEvidenceFile } from './model.mjs';
 import { markTests, testMatcher, DEFAULT_TEST_GLOBS } from './tests.mjs';
 import { runtimeLinks } from './adapters/patterns.mjs';
+import { queueLinks } from './adapters/queues.mjs';
 import { containerFacts } from './adapters/facts.mjs';
 import { pathReferences } from './adapters/references.mjs';
 import { testOnlyModules } from './testonly.mjs';
@@ -26,6 +27,7 @@ const LIMITATIONS = {
   manifests: 'Units come from manifests read as data (package.json, Cargo targets via cargo metadata, go.mod and Go main packages, tauri.conf.json, pyproject.toml). Links between units at runtime (HTTP, IPC, child processes) are not visible statically.',
   model: 'The declared model is read as exported, never run. A declared-unverified link is not wrong, only unproven: runtime links (HTTP, IPC, child processes) have no static evidence.',
   patterns: 'Runtime links from call sites are read line by line, not parsed (ADR 0006): a child-process call (JS/TS spawn, execFile, fork, execa; Rust Command::new; Tauri sidecars) counts only when its program is a string literal or a same-file constant, and it is matched to a container by path or bin name. HTTP calls count only when their literal path matches the routes of exactly one other container. Calls built at runtime are unknown findings (programs) or only counted (URLs); IPC and queues are not covered.',
+  queues: 'Message-queue links are read as text (ADR 0007): RabbitMQ (amqplib, aio-pika, pika) publishers and consumers, and BullMQ queues and workers, matched by literal routing key or queue name (constants, imported constants and environment defaults included). A producer in one container and a consumer in another become a runtime link at pattern confidence; names built at runtime are unknown findings, and a queue with only one side in the repository is a signal. Brokers configured outside the code, other client libraries and message contents are not covered.',
   references: 'Path references are repository paths to tracked files named in comments, string literals and docs, read line by line (ADR 0006). They are hints at pattern confidence, file to file, kept out of views and of affected; a reference that is also an import is left out. Paths built at runtime are not seen, and a mirrored-logic signal comes from the wording of the line, not from comparing code.',
   history: 'Change history (git log) is a heuristic: churn counts commits, and co-change between containers is a signal of hidden coupling, never proof of a link. Commits touching more than ' + MAX_CHANGESET + ' files are left out.',
   'nest': 'NestJS DI graph as registered by Nest in preview mode: providers are not instantiated, so factory/value providers and anything resolved via ModuleRef/request scope at runtime is not visible.',
@@ -279,6 +281,12 @@ export function scan(target, opts = {}) {
     snapshot.analyses.push(r.analysis);
     spawned = r.spawned;
     snapshot.limitations.push(LIMITATIONS.patterns);
+    const pyFiles = sourceFiles(root, exclude, opts.paths, isTest, '.py').filter((f) => !/(^|\/)(test_[^/]*|[^/]*_test|conftest)\.py$/.test(f));
+    const q = queueLinks(root, snapshot, { pyFiles });
+    mergeRuntimeLinks(snapshot, q.edges);
+    for (const f of q.findings) snapshot.findings.push({ id: findingId(f), ...f });
+    snapshot.analyses.push(q.analysis);
+    snapshot.limitations.push(LIMITATIONS.queues);
     const pr = pathReferences(root, files, { units: containers, imports: snapshot.edges.filter((e) => e.kind === 'imports') });
     snapshot.edges.push(...pr.edges);
     for (const f of pr.findings) snapshot.findings.push({ id: findingId(f), ...f });
@@ -319,6 +327,18 @@ export function scan(target, opts = {}) {
   snapshot.findings.sort(byKey((f) => f.id));
   snapshot.edges.sort(byKey(edgeKey));
   return snapshot;
+}
+
+// A runtime-link edge of the same pair from another adapter joins the existing one.
+function mergeRuntimeLinks(snapshot, edges) {
+  for (const e of edges) {
+    const prev = snapshot.edges.find((x) => x.kind === 'runtime-link' && x.source === e.source && x.target === e.target);
+    if (!prev) { snapshot.edges.push(e); continue; }
+    for (const [r, n] of Object.entries(e.relations)) prev.relations[r] = (prev.relations[r] ?? 0) + n;
+    prev.relations = Object.fromEntries(Object.entries(prev.relations).sort(([a], [b]) => (a < b ? -1 : 1)));
+    const ev = new Map([...prev.evidence, ...e.evidence].map((x) => [JSON.stringify(x), x]));
+    prev.evidence = [...ev.values()];
+  }
 }
 
 export function assemble(subject, tools, analyses, parts, limitations) {

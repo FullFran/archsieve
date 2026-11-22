@@ -100,12 +100,15 @@ export function applyModel(root, units, model, evFile) {
 // evidence of its own. Relation metadata `link 'code'` or `link 'runtime'` overrides the mapping.
 const CODE_TECHNOLOGY = /^\s*(imports?|library|lib|npm( package)?|package( dependency)?|module|crate|go module|code( dependency)?|in-process|function calls?|source)\s*$/i;
 // Which declared runtime technologies each static pattern relation can evidence (ADR 0006): a child
-// process does not prove an HTTP link, and a matching route does not prove a child process.
+// process does not prove an HTTP link, and a matching route does not prove a child process. A queue
+// link is evidenced by a producer in the source and a consumer in the target (ADR 0007).
 const CHILD_PROCESS_TECHNOLOGY = /child[ _-]?process|subprocess|\bspawn|\bexec\b|stdio|sidecar|\bcli\b|command line/i;
 const PATTERN_EVIDENCES = {
   'child-process': CHILD_PROCESS_TECHNOLOGY,
   sidecar: CHILD_PROCESS_TECHNOLOGY,
   'http-route': /\bhttps?\b|\brest\b|\bjson\b|\bapi\b/i,
+  amqp: /\bamqp|rabbit|\bmq\b|message (?:queue|broker|bus)|\bqueues?\b|\bevents?\b/i,
+  bullmq: /\bbull(?:mq)?\b|\bredis\b|\bqueues?\b|\bjobs?\b/i,
 };
 const evidences = (pattern, d) => Object.keys(pattern.relations ?? {}).some((r) => PATTERN_EVIDENCES[r]?.test(d.technology ?? ''));
 export const linkKind = (d) => d.link ?? (!d.technology || CODE_TECHNOLOGY.test(d.technology) ? 'code' : 'runtime');
