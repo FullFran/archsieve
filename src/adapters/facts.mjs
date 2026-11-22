@@ -1,6 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { byKey } from '../util.mjs';
+import { pyprojectInfo } from './pyproject.mjs';
 
 // Facts per container, never a score (ADR 0003): files and lines per language, manifests with their
 // declared dependency counts, and the toolchains a maintainer needs, each with the file that implies
@@ -85,6 +86,10 @@ function dependencyCounts(base, text) {
       if (section && /^[\w-]+(\.\w+)?\s*=/.test(line)) count[section]++;
     }
     return count;
+  }
+  if (base === 'pyproject.toml') {
+    const info = pyprojectInfo(text);
+    return info ? { dependencies: info.dependencies, devDependencies: info.devDependencies } : {};
   }
   if (base === 'requirements.txt') return { dependencies: text.split('\n').filter((l) => l.trim() && !/^\s*(#|-)/.test(l)).length };
   return {};

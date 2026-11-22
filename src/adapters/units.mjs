@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { run, byKey } from '../util.mjs';
+import { pyprojectInfo, pythonRunnable } from './pyproject.mjs';
 
 // Observed units (C4 containers and packages) from manifests. Manifests are read as data and
 // never executed: JSON files are parsed, Cargo targets come from `cargo metadata --no-deps`
 // (which does not run build scripts), Go main packages come from the go list adapter.
-export const MANIFESTS = ['package.json', 'Cargo.toml', 'tauri.conf.json', 'go.mod'];
+export const MANIFESTS = ['package.json', 'Cargo.toml', 'tauri.conf.json', 'go.mod', 'pyproject.toml'];
 
 const dirOf = (file) => posix.dirname(file);
 
@@ -82,6 +83,21 @@ export function scanUnits(root, { files, goMains = [] }) {
     u.technology.add('go');
     u.runnable = true;
     u.evidence.push({ tool: 'go list', file: dir, detail: 'package main' });
+  }
+
+  for (const file of of('pyproject.toml')) {
+    let info;
+    try { info = pyprojectInfo(readFileSync(join(root, file), 'utf8')); } catch (e) {
+      findings.push({ level: 'unknown', rule: 'manifest-unreadable', subjects: [file], message: `Manifest could not be parsed as TOML: ${e.message.slice(0, 160)}`, evidence: [{ tool: 'manifest', file }] });
+      continue;
+    }
+    if (!info) continue; // tool configuration or a virtual workspace root: no project, no unit
+    const u = unit(dirOf(file));
+    u.title ??= info.name;
+    u.technology.add('python');
+    const reason = pythonRunnable(root, dirOf(file) === '.' ? '' : dirOf(file), info);
+    if (reason) u.runnable = true;
+    u.evidence.push({ tool: 'manifest', file, ...(reason ? { detail: reason } : {}) });
   }
 
   for (const file of of('tauri.conf.json')) {

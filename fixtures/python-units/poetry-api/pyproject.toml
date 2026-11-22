@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "poetry-api"
+version = "1.0.0"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.110"
+requests = { version = "^2", optional = true }
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8"
+
+[tool.poetry.scripts]
+poetry-api = "poetry_api.cli:run"
