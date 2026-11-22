@@ -13,7 +13,7 @@
 - `no-orphans` leaves out entry points (same list as above); they appear in `suppressed` with `rule: "no-orphans"`.
 - `suppressed` (schema 0.6, optional): candidates a signal left out, `{ rule, subject, reason, evidence }`; for `test-only-module` the reason names the entry point (`package.json script`, `Dockerfile command`, `systemd unit`, `Procfile`, `shell script`, `workflow run step`, `spawned by path`, `manifest entry`, `entry glob`, `imported by an entry point`). A file loaded by path at runtime looks the same, so it stays a signal.
 - `nodes[].facts` (containers): `files`, `lines`, `languages` (`{files, lines}` per language; lockfiles left out), `manifests` (`file`, `kind`, and `dependencies` / `devDependencies` / `indirect` when counted), `toolchains` (`name`, first `file` implying it). Facts, not a score. `diff` adds `containerFacts` for containers whose facts changed.
-- `nodes[].churn` (with `scan --history`): commits touching the file, Go package or container in the window; `co-change-without-link` signals name containers that change together with no static link.
+- `nodes[].churn` (with `scan --history`): commits touching the file, Go package or container in the window; `co-change-without-link` signals name containers that change together with no static link (docs, images and lockfiles left out).
 - Every node and edge has `evidence[]`: which tool reported it and, when the tool reports one, the file and import specifier.
 - `findings[].level`:
   - `error`: verifiable from the evidence (runtime import cycle, DI cycle, Go cycle).

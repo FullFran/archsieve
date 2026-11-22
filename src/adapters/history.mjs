@@ -10,6 +10,12 @@ import { run, byKey } from '../util.mjs';
 export const MAX_CHANGESET = 50;
 export const DEFAULT_SINCE = '90d';
 export const DEFAULT_CO_CHANGE_MIN = 5;
+
+// Files that are neither code nor configuration: docs, images and lockfiles change with the code they
+// describe or pin, which is good practice, not coupling (#39). They keep their own file churn but do not
+// make a commit count for a container, so they never pair containers.
+const NOT_COUPLING = /\.(md|mdx|markdown|rst|adoc|txt|png|jpe?g|gif|webp|ico|pdf)$|(^|\/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb|go\.sum|Cargo\.lock|poetry\.lock|uv\.lock)$/i;
+export const isCouplingEvidence = (file) => !NOT_COUPLING.test(file);
 const MIN_DEGREE = 0.5;
 
 const usage = (m) => Object.assign(new Error(m), { code: 'USAGE' });
@@ -38,14 +44,16 @@ export function readHistory(cwd, { commit = 'HEAD', since = DEFAULT_SINCE } = {}
 
 // Adds `churn` to file, Go package and container nodes, and returns co-change findings.
 export function applyHistory(snapshot, history, { coChangeMin = DEFAULT_CO_CHANGE_MIN } = {}) {
-  const units = snapshot.nodes.filter((n) => n.kind === 'container').sort(byKey((u) => String(1e6 - u.path.length).padStart(7, '0') + u.path));
+  // Deepest container first; the root (`.`) always last, or it would tie with one-letter paths and win.
+  const depth = (u) => (u.path === '.' ? 0 : u.path.length);
+  const units = snapshot.nodes.filter((n) => n.kind === 'container').sort(byKey((u) => String(1e6 - depth(u)).padStart(7, '0') + u.path));
   const within = (file, dir) => dir === '.' || file === dir || file.startsWith(`${dir}/`);
   const unitOf = (file) => units.find((u) => within(file, u.path));
   const fileChurn = new Map(), unitChurn = new Map(), pairs = new Map();
   const bump = (m, k) => m.set(k, (m.get(k) ?? 0) + 1);
   for (const files of history.commits) {
     for (const f of files) bump(fileChurn, f);
-    const touched = [...new Set(files.map(unitOf).filter(Boolean).map((u) => u.id))].sort();
+    const touched = [...new Set(files.filter(isCouplingEvidence).map(unitOf).filter(Boolean).map((u) => u.id))].sort();
     for (const u of touched) bump(unitChurn, u);
     for (let i = 0; i < touched.length; i++) for (let j = i + 1; j < touched.length; j++) bump(pairs, `${touched[i]}\u0000${touched[j]}`);
   }

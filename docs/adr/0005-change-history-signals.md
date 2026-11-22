@@ -12,6 +12,7 @@ Import graphs miss couplings that only show when files change together: a schema
 - A pair of containers is reported when they changed together in at least `--co-change-min` commits (default 5) and in at least half of the commits of the less active one, and no `depends-on` link with observed relations joins them. Co-change is never an error and never becomes a link.
 - The window (`--since <N>d`, default 90 days) is anchored at the scanned commit's committer date, not at the current time, so the same commit gives the same snapshot (ADR 0002). An ISO date is also accepted.
 - Commits touching more than 50 files are left out (formatting sweeps, renames, vendoring), as Code Maat does with large changesets; the count is reported in `analyses`.
+- Docs, images and lockfiles (`.md`, `.mdx`, `.rst`, `.adoc`, `.txt`, images, `.pdf`, `pnpm-lock.yaml`, `package-lock.json`, `go.sum` and the like) keep their file churn but do not make a commit count for a container (#39). Writing the docs in the same commit as the code is good practice, not coupling; without this, the root container paired with every package. Root scripts, infra and config still count. The root container is matched last, after every nested one.
 
 ## Own code and its justification
 

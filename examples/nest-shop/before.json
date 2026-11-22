@@ -3,7 +3,7 @@
   "kind": "archsieve-snapshot",
   "subject": {
     "name": "before",
-    "commit": "4df69c0edc93e1fd0f4a273ba95ccbc5ba6c12c5",
+    "commit": "a847828883738c9086e80ea36009049194384f6d",
     "dirty": false
   },
   "tools": [
@@ -51,6 +51,12 @@
       "scope": "child-process, sidecar and HTTP calls",
       "status": "ok",
       "note": "0 runtime links, 0 call sites to programs outside the repository, 0 unresolved; read 0 of 6 production JS/TS files and 0 of 0 Rust files that name a child-process API; HTTP: 1 route in 1 container; 0 calls matched, 0 ambiguous, 0 matched no route, 0 without a literal path"
+    },
+    {
+      "tool": "archsieve queues",
+      "scope": "RabbitMQ (AMQP) and BullMQ producers and consumers",
+      "status": "ok",
+      "note": "0 queue links; 0 AMQP producers, 0 AMQP consumers, 0 BullMQ producers, 0 BullMQ consumers; 0 unresolved names; read 0 JS/TS and Python files that name a message-queue library"
     },
     {
       "tool": "path references",
@@ -459,9 +465,10 @@
   "findings": [],
   "limitations": [
     "Static import graph only: no runtime calls, network/IPC/queue/event links, reflection or computed dynamic imports. Unresolvable imports are listed as unknown findings, not guessed.",
-    "Units come from manifests read as data (package.json, Cargo targets via cargo metadata, go.mod and Go main packages, tauri.conf.json). Links between units at runtime (HTTP, IPC, child processes) are not visible statically.",
+    "Units come from manifests read as data (package.json, Cargo targets via cargo metadata, go.mod and Go main packages, tauri.conf.json, pyproject.toml). Links between units at runtime (HTTP, IPC, child processes) are not visible statically.",
     "NestJS DI graph as registered by Nest in preview mode: providers are not instantiated, so factory/value providers and anything resolved via ModuleRef/request scope at runtime is not visible.",
     "Runtime links from call sites are read line by line, not parsed (ADR 0006): a child-process call (JS/TS spawn, execFile, fork, execa; Rust Command::new; Tauri sidecars) counts only when its program is a string literal or a same-file constant, and it is matched to a container by path or bin name. HTTP calls count only when their literal path matches the routes of exactly one other container. Calls built at runtime are unknown findings (programs) or only counted (URLs); IPC and queues are not covered.",
+    "Message-queue links are read as text (ADR 0007): RabbitMQ (amqplib, aio-pika, pika) publishers and consumers, and BullMQ queues and workers, matched by literal routing key or queue name (constants, imported constants and environment defaults included). A producer in one container and a consumer in another become a runtime link at pattern confidence; names built at runtime are unknown findings, and a queue with only one side in the repository is a signal. Brokers configured outside the code, other client libraries and message contents are not covered.",
     "Path references are repository paths to tracked files named in comments, string literals and docs, read line by line (ADR 0006). They are hints at pattern confidence, file to file, kept out of views and of affected; a reference that is also an import is left out. Paths built at runtime are not seen, and a mirrored-logic signal comes from the wording of the line, not from comparing code."
   ]
 }
