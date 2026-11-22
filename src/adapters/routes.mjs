@@ -50,7 +50,7 @@ const CLIENT = {
 };
 
 // Top-level arguments of the call whose `(` ends at `start`.
-function args(line, start) {
+export function args(line, start) {
   const out = [];
   let depth = 0, quote = null, cur = '';
   for (let i = start; i < line.length; i++) {

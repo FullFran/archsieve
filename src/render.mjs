@@ -321,9 +321,11 @@ function containerLegend(p) {
     'child-process': 'A call site starts the other container as a child process (literal program or bin name)',
     sidecar: 'A Tauri sidecar call names a binary the other container builds',
     'http-route': 'A client call\'s literal path matches a route only the other container defines',
+    amqp: 'This container publishes a routing key or queue (RabbitMQ) that the other container binds or consumes; the arrow points from producer to consumer',
+    bullmq: 'This container adds jobs to a BullMQ queue that the other container processes; the arrow points from producer to consumer',
   };
   for (const r of Object.keys(RUNTIME_ROWS)) if (runtime.has(r)) rows.push([`\`${r} (static pattern)\``, `${RUNTIME_ROWS[r]}; read by a line pattern, lower confidence than an import, dashed when nothing else backs the arrow`]);
-  if (edge((e) => e.state === 'evidenced')) rows.push(['Arrow ending in `evidenced (static pattern)`', 'Declared as a runtime link (child process, sidecar, HTTP) in the model, and a call site of that kind matches it']);
+  if (edge((e) => e.state === 'evidenced')) rows.push(['Arrow ending in `evidenced (static pattern)`', 'Declared as a runtime link (child process, sidecar, HTTP, queue) in the model, and a call site of that kind matches it']);
   if (edge((e) => e.state === 'undeclared')) rows.push(['Arrow ending in `not in model`', 'Found in the code, not declared in the model']);
   return rows;
 }

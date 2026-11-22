@@ -1,0 +1,10 @@
+{
+  "elements": {
+    "api": { "id": "api", "title": "API", "metadata": { "path": "api" } },
+    "extractor": { "id": "extractor", "title": "Extractor", "metadata": { "path": "extractor" } }
+  },
+  "relations": {
+    "r1": { "id": "r1", "source": { "model": "api" }, "target": { "model": "extractor" }, "title": "requests extraction", "technology": "RabbitMQ" },
+    "r2": { "id": "r2", "source": { "model": "extractor" }, "target": { "model": "api" }, "title": "calls back", "technology": "HTTP" }
+  }
+}

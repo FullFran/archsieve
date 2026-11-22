@@ -1,0 +1,7 @@
+[project]
+name = "extractor"
+version = "0.1.0"
+dependencies = ["aio-pika>=9"]
+
+[project.scripts]
+extractor = "extractor.worker:main"
