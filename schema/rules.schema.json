@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/FullFran/archsieve/schema/rules-0.1.json",
+  "title": "ArchSieve declared dependency rules 0.1",
+  "description": "Dependency rules declared by the user and checked by `scan --rules <file>`. The vocabulary mirrors dependency-cruiser (forbidden, allowed, from, to, path, pathNot), but paths are regular expressions matched against snapshot node ids (a file path, go:<package>, npm:<package>, nest:...), so one rule language covers every analyzer. Only verifiable edges are checked (imports, nest-imports, nest-injects), and each violation is an error finding.",
+  "type": "object",
+  "additionalProperties": false,
+  "anyOf": [{ "required": ["forbidden"], "properties": { "forbidden": true } }, { "required": ["allowed"], "properties": { "allowed": true } }],
+  "properties": {
+    "$schema": { "type": "string" },
+    "kind": { "const": "archsieve-rules" },
+    "forbidden": {
+      "type": "array",
+      "minItems": 1,
+      "description": "An edge that matches a forbidden rule is an error finding whose rule is the rule's name.",
+      "items": {
+        "type": "object",
+        "required": ["name", "from", "to"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$", "description": "Stable rule id: the finding's rule and the first part of its id. Unique in the file." },
+          "comment": { "type": "string" },
+          "from": { "$ref": "#/$defs/end" },
+          "to": { "$ref": "#/$defs/end" }
+        }
+      }
+    },
+    "allowed": {
+      "type": "array",
+      "minItems": 1,
+      "description": "When present, an edge that matches no allowed rule is a not-in-allowed error finding (dependency-cruiser semantics).",
+      "items": {
+        "type": "object",
+        "required": ["from", "to"],
+        "additionalProperties": false,
+        "properties": {
+          "comment": { "type": "string" },
+          "from": { "$ref": "#/$defs/end" },
+          "to": { "$ref": "#/$defs/end" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "pattern": {
+      "description": "A regular expression (JavaScript syntax, no flags) matched against a node id, or a list of them (any may match). In to, $1..$9 are replaced by the groups of the from.path match.",
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+      ]
+    },
+    "end": {
+      "type": "object",
+      "description": "One end of an edge. An empty object matches every node.",
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "#/$defs/pattern", "description": "The node id must match." },
+        "pathNot": { "$ref": "#/$defs/pattern", "description": "The node id must not match." }
+      }
+    }
+  }
+}

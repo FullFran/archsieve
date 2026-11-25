@@ -3,6 +3,7 @@ import { existsSync, statSync, mkdtempSync, rmSync, symlinkSync, readdirSync } f
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { run, byKey, edgeKey } from './util.mjs';
+import { checkRules, rulesNote } from './rules.mjs';
 import { scanDepcruise, DEFAULT_EXCLUDE, VENDOR, VERSION as DC_VERSION } from './adapters/depcruise.mjs';
 import { scanGo, goVersion } from './adapters/golist.mjs';
 import { scanNest } from './adapters/nest.mjs';
@@ -323,6 +324,11 @@ export function scan(target, opts = {}) {
       snapshot.analyses.push({ tool: 'git log', scope: since, status: 'ok', note: `${h.commits.length} commits since ${h.since}${h.large ? `; ${h.large} commits touching more than ${MAX_CHANGESET} files left out` : ''}` });
       snapshot.limitations.push(LIMITATIONS.history);
     }
+  }
+  if (opts.rules) {
+    const found = checkRules(snapshot, opts.rules);
+    for (const f of found) snapshot.findings.push({ id: findingId(f), ...f });
+    snapshot.analyses.push({ tool: 'declared rules', scope: opts.rules.file, status: 'ok', note: rulesNote(opts.rules, found.length) });
   }
   snapshot.findings.sort(byKey((f) => f.id));
   snapshot.edges.sort(byKey(edgeKey));

@@ -7,6 +7,7 @@ import { buildDiagram, toMarkdownView, toMermaid, toDot } from '../src/render.mj
 import { validate } from '../src/validate.mjs';
 import { DEFAULT_TEST_GLOBS } from '../src/tests.mjs';
 import { affected } from '../src/affected.mjs';
+import { loadRules } from '../src/rules.mjs';
 
 const USAGE = `archsieve: architecture evidence for coding agents (V0, experimental)
 
@@ -14,12 +15,13 @@ Usage:
   archsieve scan <dir> [--ref <git-ref>] [-o snapshot.json] [--paths a,b] [--exclude <regex, added to defaults>] [--ts-config <file>]
                        [--test-globs <glob,...>] [--entry-globs <glob,...>] [--history [--since <N>d|<date> (default 90d)] [--co-change-min N (default 5)]]
                        [--no-js] [--no-units] [--model <likec4.json>] [--go auto|none|<dir,...>] [--nest-entry <compiled module.js> [--nest-export AppModule]]
+                       [--rules <rules.json>]
   archsieve diff <before.json> <after.json> [--format json|md] [--depth N] [-o file] [--fail-on error|signal|none] [--no-tests]
   archsieve render <snapshot.json> [--view components|files|nest|containers] [--depth N] [--format mermaid|dot|md]
                        [--compare <before.json>] [--externals] [--within <dir>] [--focus <id>] [--no-tests]
                        [--max-nodes N (default 40)] [--max-edges N (default 100)] [-o file]
   archsieve affected <snapshot.json> (--changed <file> ... | --base <git-ref> [--repo <dir>]) [--ignore <glob,...>] [-o file]
-  archsieve validate <snapshot-or-diff-or-affected.json>
+  archsieve validate <snapshot-or-diff-or-affected-or-rules.json>
 
 render: --format md adds title, concern, scope line and legend. --within zooms into a folder (outside neighbours become
 dashed boundary boxes); --focus shows one element with its direct dependencies and dependents. Over budget, components
@@ -54,6 +56,12 @@ included), the test files among them, and "blind": every reason the answer may b
 the graph, unresolved imports that may point into it, skipped import-graph analyses, a stale snapshot). Run everything when blind
 is not empty. --base reads git diff --name-only <ref> in --repo (default: current directory).
 
+--rules <file> checks declared dependency rules (schema/rules.schema.json): "forbidden" rules with a name, and "allowed"
+rules (an edge that matches none is not-in-allowed), each with from/to {path, pathNot} regular expressions matched
+against node ids (file paths, go:<package>, npm:<package>, nest:...); $1 in to reuses from.path groups. Every import,
+nest-imports or nest-injects edge that breaks a rule is an error finding with the rule name and the edge's evidence,
+so diff --fail-on error gates new violations. A malformed rules file exits 2 before scanning.
+
 Exit codes: 0 ok, 1 --fail-on threshold reached or invalid document, 2 usage or tool error.
 --nest-entry EXECUTES the target's module top-level code (providers are not instantiated). Use only on trusted code.`;
 
@@ -64,7 +72,7 @@ const OPTIONS = {
   'test-globs': { type: 'string' }, 'entry-globs': { type: 'string' }, 'no-tests': { type: 'boolean' },
   changed: { type: 'string', multiple: true }, base: { type: 'string' }, repo: { type: 'string' }, ignore: { type: 'string' },
   'no-js': { type: 'boolean' }, 'no-units': { type: 'boolean' }, model: { type: 'string' }, go: { type: 'string' },
-  'nest-entry': { type: 'string' }, 'nest-export': { type: 'string' },
+  'nest-entry': { type: 'string' }, 'nest-export': { type: 'string' }, rules: { type: 'string' },
   format: { type: 'string' }, 'fail-on': { type: 'string' },
   within: { type: 'string' }, focus: { type: 'string' }, 'max-nodes': { type: 'string' }, 'max-edges': { type: 'string' },
   view: { type: 'string' }, depth: { type: 'string' }, compare: { type: 'string' }, externals: { type: 'boolean' },
@@ -84,10 +92,12 @@ function main(argv) {
   switch (cmd) {
     case 'scan': {
       if (args.length !== 1) usageError('scan needs exactly one <dir>');
+      // Read before scanning: a malformed rules file must never become a silent pass.
+      const rules = o.rules ? loadRules(o.rules) : null;
       const snap = (o.ref ? (d, x) => scanRef(d, o.ref, x) : scan)(args[0], {
         paths: o.paths?.split(','), exclude: o.exclude, tsConfig: o['ts-config'], js: !o['no-js'], units: !o['no-units'], model: o.model,
         history: !!o.history, since: o.since, coChangeMin: positive(o['co-change-min'], 'co-change-min'),
-        testGlobs: o['test-globs']?.split(',').map((g) => g.trim()).filter(Boolean), entryGlobs: o['entry-globs']?.split(',').map((g) => g.trim()).filter(Boolean), go: o.go ?? 'auto', nestEntry: o['nest-entry'], nestExport: o['nest-export'],
+        testGlobs: o['test-globs']?.split(',').map((g) => g.trim()).filter(Boolean), entryGlobs: o['entry-globs']?.split(',').map((g) => g.trim()).filter(Boolean), go: o.go ?? 'auto', nestEntry: o['nest-entry'], nestExport: o['nest-export'], rules,
       });
       out(`${JSON.stringify(snap, null, 2)}\n`, o.output);
       const c = { error: 0, signal: 0, unknown: 0 };

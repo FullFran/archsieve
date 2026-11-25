@@ -29,6 +29,7 @@ Use before designing or reviewing a structural change (new module, service, inte
 | Compare your uncommitted work with HEAD | `scan <repo> --ref HEAD -o before.json`, `scan <repo> -o after.json`, `diff before.json after.json --format md` |
 | Compare two commits / branches | `scan <repo> --ref <a>` and `--ref <b>`, then `diff` |
 | Gate in CI | `diff base.json head.json --fail-on error` (exit 1 on new verifiable regressions) |
+| The repo declares which dependencies are allowed (layers, "domain never imports adapters") | `scan <repo> --rules <rules.json>` (dependency-cruiser vocabulary: `forbidden` / `allowed`, `from` / `to` `path` regexes over node ids such as `src/a/x.ts`, `go:<pkg>`, `npm:<pkg>`); each broken rule is an `error` named after the rule; `validate <rules.json>` checks the file. Never invent rules the repo did not declare |
 | Coupling buried under test helpers (`imports x152 (test x148)`) | `render ... --no-tests` or `diff ... --no-tests`; custom test layout: `scan --test-globs '<glob>,...'` |
 | Which tests to run for a change | `scan <repo> -o now.json`, then `affected now.json --base <ref> --repo <repo>`; run `tests`, or everything when `blind` is not empty |
 | Many `unresolved-import` unknowns, or a `ts-config-hint` signal | rescan with the `--ts-config <file>` the hint names, or `--ts-config auto` |

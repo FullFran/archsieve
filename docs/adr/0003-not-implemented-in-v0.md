@@ -10,7 +10,7 @@ Status: accepted (V0) · Date: 2026-11-14
 | Graph database, persistence, daemon | JSON files on disk are enough for diff and CI | Queries over many snapshots are needed |
 | UI / dashboard / SaaS | Mermaid renders in GitHub and editors; DOT for large graphs | Never in core |
 | Architecture quality score | Arbitrary and gameable; the spec forbids it | Not planned |
-| Own rule language and baseline | dependency-cruiser rules and `--ignore-known` baselines exist | Rules needed across non-JS analyzers |
+| Own rule language and baseline | dependency-cruiser rules and `--ignore-known` baselines exist | Rules needed across non-JS analyzers (done in [ADR 0008](0008-declared-dependency-rules.md): declared rules over node ids; no baseline file, `diff` is the baseline) |
 | SARIF output | Useful for code-scanning UIs, not needed for the first agent loop | CI annotations on PRs are requested |
 | C4 / Structurizr | Needs system/container semantics that code imports do not prove | Deployment/IaC evidence is added |
 | Rust analysis | `cargo metadata` gives crates only; module graphs need third-party tools | Rust changes cause architecture problems |

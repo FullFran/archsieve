@@ -16,8 +16,8 @@ export const DEFAULT_EXCLUDE = '^(?!.*node_modules/).*(^|/)(dist|build|coverage|
 // Vendored code is a boundary, not something to re-analyze: edges INTO it are kept, its insides are not followed.
 export const VENDOR = '(^|/)(node_modules|vendor|third_party)(/|$)';
 
-// ArchSieve does not define its own rule language: rules ARE dependency-cruiser rules.
-// Only two defaults, both well understood. Severity maps to ArchSieve levels:
+// The built-in checks ARE dependency-cruiser rules: only two defaults, both well understood.
+// Rules the user declares (scan --rules) match node ids across analyzers: see src/rules.mjs and ADR 0008. Severity maps to ArchSieve levels:
 // error -> "error" (verifiable), warn -> "signal" (heuristic).
 function defaultConfig({ exclude, tsConfig }) {
   return {
@@ -31,6 +31,10 @@ function defaultConfig({ exclude, tsConfig }) {
       exclude: { path: exclude },
       // 'specify' keeps type-only imports but labels them 'pre-compilation-only' (erased at runtime).
       tsPreCompilationDeps: 'specify',
+      // dependency-cruiser ignores package.json "exports" by default (exportsFields: []), so packages
+      // that ship only an exports map would be unresolved (#30). Node's own conditions: the first key that
+      // matches wins with no fallback, so "types" (often listed first, pointing at an unbuilt .d.ts) is left out.
+      enhancedResolveOptions: { exportsFields: ['exports'], conditionNames: ['import', 'require', 'node', 'default'] },
       ...(tsConfig ? { tsConfig: { fileName: tsConfig } } : {}),
     },
   };
@@ -49,20 +53,40 @@ export function scanDepcruise(root, { paths = ['.'], exclude = DEFAULT_EXCLUDE, 
       err.code = 'TOOL_FAILED';
       throw err;
     }
-    return normalize(JSON.parse(res.stdout));
+    return normalize(JSON.parse(res.stdout), { installed: (file, name) => installedPackage(root, file, name) });
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 }
 
+// The package is the LAST node_modules segment: pnpm resolves into node_modules/.pnpm/<id>/node_modules/<name>.
 const npmName = (resolved, module) => {
-  const m = /node_modules\/((?:@[^/]+\/)?[^/]+)/.exec(resolved ?? '');
-  if (m) return m[1];
-  const parts = module.split('/');
-  return module.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
+  const all = [...(resolved ?? '').matchAll(/node_modules\/((?:@[^/]+\/)?[^/]+)/g)];
+  if (all.length) return all.at(-1)[1];
+  return packageName(module);
 };
 
-export function normalize(result) {
+const BARE = /^(?!\.{1,2}(\/|$)|\/|[a-zA-Z][a-zA-Z\d+.-]*:)/;
+const packageName = (spec) => {
+  const parts = spec.split('/');
+  return spec.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
+};
+
+// Node's lookup: node_modules/<name>/package.json in the importing file's folder or any ancestor.
+function installedPackage(root, file, name) {
+  let dir = dirname(join(root, file));
+  for (;;) {
+    if (existsSync(join(dir, 'node_modules', name, 'package.json'))) return true;
+    const up = dirname(dir);
+    if (up === dir) return false;
+    dir = up;
+  }
+}
+
+// installed(file, packageName): whether the package is installed for that file. A bare specifier that
+// does not resolve to a file (exports target not built, subpath not exported) still depends on an
+// installed package: the node is the package, so the import is an edge, not an unknown (#30).
+export function normalize(result, { installed = () => false } = {}) {
   const nodes = new Map(), edges = [], findings = [], unresolved = new Map();
   const tool = 'dependency-cruiser';
   for (const mod of result.modules) {
@@ -75,7 +99,10 @@ export function normalize(result) {
       if (d.coreModule) continue;
       const types = d.dependencyTypes ?? [];
       let target;
-      if (d.couldNotResolve) {
+      if (d.couldNotResolve && BARE.test(d.module) && installed(mod.source, packageName(d.module))) {
+        target = `npm:${packageName(d.module)}`;
+        if (!nodes.has(target)) nodes.set(target, { id: target, kind: 'external-package', evidence: [{ tool }] });
+      } else if (d.couldNotResolve) {
         // One finding per file (finding ids are rule + subjects), one evidence entry per specifier.
         let f = unresolved.get(mod.source);
         if (!f) unresolved.set(mod.source, f = { level: 'unknown', rule: 'unresolved-import', subjects: [mod.source], evidence: [] });
