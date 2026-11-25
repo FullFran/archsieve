@@ -67,7 +67,7 @@ A rules file where dependencies only go down across `src/d` → `src/c` → `src
 For Go, match package ids: `{ "name": "domain-without-adapters", "from": { "path": "^go:.*/internal/domain" }, "to": { "path": "^go:.*/internal/adapters/" } }`.
 
 `npm link` puts `archsieve` on your PATH. To use it as a dev dependency of another project, pin a tag:
-`npm install --save-dev https://github.com/FullFran/archsieve/archive/refs/tags/v0.6.0.tar.gz` (the tag tarball keeps an `integrity` hash in the lockfile; a `github:` spec is locked as `git+ssh`, which needs a GitHub SSH key to install).
+`npm install --save-dev https://github.com/FullFran/archsieve/archive/refs/tags/v0.7.0.tar.gz` (the tag tarball keeps an `integrity` hash in the lockfile; a `github:` spec is locked as `git+ssh`, which needs a GitHub SSH key to install).
 
 ## Example (synthetic NestJS fixture)
 
