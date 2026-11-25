@@ -1,0 +1,8 @@
+{
+  "$schema": "../../schema/rules.schema.json",
+  "forbidden": [
+    { "name": "a-is-the-bottom", "comment": "a depends on no other layer.", "from": { "path": "^src/a/" }, "to": { "path": "^src/(b|c|d)/" } },
+    { "name": "b-only-down", "comment": "b may depend on a only.", "from": { "path": "^src/b/" }, "to": { "path": "^src/(c|d)/" } },
+    { "name": "c-only-down", "comment": "c may depend on a and b only.", "from": { "path": "^src/c/" }, "to": { "path": "^src/d/" } }
+  ]
+}

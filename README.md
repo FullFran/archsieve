@@ -21,14 +21,15 @@ repo or commit ──► existing analyzers ──► snapshot.json ──► di
 - **render**: Mermaid, DOT or Markdown views (containers, components, files, NestJS DI), optionally coloured against a previous snapshot. Each diagram has a title, keeps to a budget of boxes and arrows (`--max-nodes`, `--max-edges`), and can zoom into a folder (`--within`) or one element (`--focus`). `--format md` adds the concern, what is shown out of what, and a legend.
 - **affected**: which files and tests depend on a set of changed files (`--changed <file> ...` or `--base <git-ref>`): the reverse closure over the snapshot's imports, the test files inside it, and `blind`, every reason the answer may be incomplete (changed files outside the graph such as configs, lockfiles or data; unresolved imports that may point into the closure; skipped import-graph analyses (dependency-cruiser, go list); a snapshot from another commit). A pre-push hook can run `tests` and fall back to the full suite when `blind` is not empty. No runner integration and no prediction. `--ignore '**/*.md'` drops changed files the caller knows are irrelevant.
 - **history** (opt-in `scan --history`): churn per file, Go package and container from `git log` (read only) over a window anchored at the scanned commit (`--since 90d`), and `co-change-without-link` signals for containers that change together with no import or package dependency between them (`--co-change-min 5`); docs, images and lockfiles do not count as coupling. See [ADR 0005](docs/adr/0005-change-history-signals.md).
-- **validate**: checks documents against the JSON Schemas in `schema/`.
+- **rules** (opt-in `scan --rules <file>`): dependency rules you declare, in dependency-cruiser's vocabulary (`forbidden` with a `name`, `allowed`, `from` / `to` with `path` / `pathNot` regular expressions, `$1` in `to` reusing `from` groups), matched against node ids, so one file covers JS/TS files, Go packages (`go:...`), npm packages (`npm:...`) and NestJS DI. Each import or DI edge that breaks a rule is an `error` finding named after the rule, with the edge's evidence; when `allowed` is present, an edge that matches none is `not-in-allowed`. `diff --fail-on error` then fails a change that adds a violation. A malformed rules file exits 2 before scanning. ArchSieve ships no rules. See [ADR 0008](docs/adr/0008-declared-dependency-rules.md).
+- **validate**: checks documents against the JSON Schemas in `schema/` (snapshot, diff, affected and rules files).
 - **tests vs production**: scan marks files matching test globs (`--test-globs`, default `**/test/**`, `**/tests/**`, `**/__tests__/**`, `**/*.test.*`, `**/*.spec.*`, `**/*_test.*`) with `test: true`. Container and component arrows show the test share (`imports x152 (test x148)`), and `render --no-tests` / `diff --no-tests` leave imports from test files out, so a production coupling change is not buried under test helpers. A production file that only tests (or other such files) import, and that nothing runs by path, is a `test-only-module` signal, one per retired folder (never crossing a container) with its size. Entry points are `package.json` `main`/`module`/`browser`/`bin`/`exports`, `--entry-globs`, files a `node`/`tsx`/`ts-node`/`bun`/`deno` command runs in any `package.json` `scripts`, Dockerfile `CMD`/`ENTRYPOINT`/`RUN`, systemd `Exec*=`, `Procfile`, `.sh`/`.ps1` scripts and GitHub workflow `run:` steps (tracked files, read as data), and files production code spawns by path; each candidate they keep out is listed in the snapshot's `suppressed` array with its `reason` and the file and line that runs it. A folder that only such test-only code imports, and no test directly, is a separate `test-only-dependency` signal naming its importers. The same entry points are never `no-orphans` findings (they are listed in `suppressed` too). The mark is a path convention, not proof.
 
 Findings have three levels and nothing else:
 
 | Level | Meaning | Examples |
 |---|---|---|
-| `error` | Verifiable from the evidence for this commit | runtime import cycle, DI cycle, module cycle |
+| `error` | Verifiable from the evidence for this commit | runtime import cycle, DI cycle, module cycle, an edge that breaks a declared rule |
 | `signal` | Heuristic; needs judgement, not obedience | orphan file, cycle through type-only imports, provider behind a token with one binding |
 | `unknown` | Not inferable from static evidence | unresolved import, factory/value provider, Go package load error |
 
@@ -48,7 +49,22 @@ node bin/archsieve.mjs scan ../my-repo --ref main -o /tmp/as/main.json
 node bin/archsieve.mjs diff /tmp/as/main.json /tmp/as/now.json --format md
 node bin/archsieve.mjs render /tmp/as/now.json --depth 1 > /tmp/as/components.mmd
 node bin/archsieve.mjs affected /tmp/as/now.json --base origin/main --repo ../my-repo   # files, tests, blind
+node bin/archsieve.mjs scan ../my-repo --rules archsieve.rules.json -o /tmp/as/now.json  # broken declared rules are errors
 ```
+
+A rules file where dependencies only go down across `src/d` → `src/c` → `src/b` → `src/a` (any distance), so `a` importing `d` is an error and `d` importing `a` is not ([fixtures/layers](fixtures/layers) also has the same layering as `allowed` rules):
+
+```json
+{
+  "forbidden": [
+    { "name": "a-is-the-bottom", "from": { "path": "^src/a/" }, "to": { "path": "^src/(b|c|d)/" } },
+    { "name": "b-only-down", "from": { "path": "^src/b/" }, "to": { "path": "^src/(c|d)/" } },
+    { "name": "c-only-down", "from": { "path": "^src/c/" }, "to": { "path": "^src/d/" } }
+  ]
+}
+```
+
+For Go, match package ids: `{ "name": "domain-without-adapters", "from": { "path": "^go:.*/internal/domain" }, "to": { "path": "^go:.*/internal/adapters/" } }`.
 
 `npm link` puts `archsieve` on your PATH. To use it as a dev dependency of another project, pin a tag:
 `npm install --save-dev https://github.com/FullFran/archsieve/archive/refs/tags/v0.6.0.tar.gz` (the tag tarball keeps an `integrity` hash in the lockfile; a `github:` spec is locked as `git+ssh`, which needs a GitHub SSH key to install).
@@ -115,6 +131,7 @@ Boxes are blue for code, yellow for npm packages and purple for Nest modules. In
 - [ADR 0005](docs/adr/0005-change-history-signals.md): change history as a separate signal source.
 - [ADR 0006](docs/adr/0006-static-runtime-link-patterns.md): static runtime-link evidence from call-site patterns, and path references.
 - [ADR 0007](docs/adr/0007-message-queue-links.md): message-queue links (RabbitMQ and BullMQ) from literal names.
+- [ADR 0008](docs/adr/0008-declared-dependency-rules.md): declared dependency rules over node ids.
 - [Tool matrix](docs/research/tool-matrix.md): comparison with existing tools.
 
 ## License

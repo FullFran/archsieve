@@ -6,10 +6,13 @@ const ajv = new Ajv2020({ allErrors: true, strict: true });
 ajv.addSchema(load('snapshot.schema.json'));
 ajv.addSchema(load('diff.schema.json'));
 ajv.addSchema(load('affected.schema.json'));
-const SCHEMA = { 'archsieve-diff': 'diff', 'archsieve-affected': 'affected' };
+ajv.addSchema(load('rules.schema.json'));
+const SCHEMA = { 'archsieve-diff': 'diff', 'archsieve-affected': 'affected', 'archsieve-rules': 'rules' };
+// A rules file needs no kind: forbidden or allowed at the top level is enough.
+const kindOf = (doc) => doc?.kind ?? (doc && typeof doc === 'object' && ('forbidden' in doc || 'allowed' in doc) ? 'archsieve-rules' : undefined);
 
-export function validate(doc) {
-  const id = `https://github.com/FullFran/archsieve/schema/${SCHEMA[doc?.kind] ?? 'snapshot'}-0.1.json`;
+export function validate(doc, schema = SCHEMA[kindOf(doc)] ?? 'snapshot') {
+  const id = `https://github.com/FullFran/archsieve/schema/${schema}-0.1.json`;
   const v = ajv.getSchema(id);
   return v(doc) ? [] : v.errors.map((e) => `${e.instancePath || '/'} ${e.message}`);
 }

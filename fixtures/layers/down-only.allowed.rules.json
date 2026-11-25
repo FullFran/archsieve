@@ -1,0 +1,10 @@
+{
+  "$schema": "../../schema/rules.schema.json",
+  "allowed": [
+    { "comment": "Any layer may use its own folder.", "from": { "path": "^src/([a-d])/" }, "to": { "path": "^src/$1/" } },
+    { "comment": "b, c and d may use a.", "from": { "path": "^src/(b|c|d)/" }, "to": { "path": "^src/a/" } },
+    { "comment": "c and d may use b.", "from": { "path": "^src/(c|d)/" }, "to": { "path": "^src/b/" } },
+    { "comment": "d may use c.", "from": { "path": "^src/d/" }, "to": { "path": "^src/c/" } },
+    { "comment": "Any layer may use installed packages.", "from": {}, "to": { "path": "^npm:" } }
+  ]
+}

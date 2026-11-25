@@ -16,8 +16,8 @@ export const DEFAULT_EXCLUDE = '^(?!.*node_modules/).*(^|/)(dist|build|coverage|
 // Vendored code is a boundary, not something to re-analyze: edges INTO it are kept, its insides are not followed.
 export const VENDOR = '(^|/)(node_modules|vendor|third_party)(/|$)';
 
-// ArchSieve does not define its own rule language: rules ARE dependency-cruiser rules.
-// Only two defaults, both well understood. Severity maps to ArchSieve levels:
+// The built-in checks ARE dependency-cruiser rules: only two defaults, both well understood.
+// Rules the user declares (scan --rules) match node ids across analyzers: see src/rules.mjs and ADR 0008. Severity maps to ArchSieve levels:
 // error -> "error" (verifiable), warn -> "signal" (heuristic).
 function defaultConfig({ exclude, tsConfig }) {
   return {
